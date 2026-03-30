@@ -1,5 +1,6 @@
 #include "D2Client.hpp"
 #include "UI/Menus/LoadError.hpp"
+#include "Game/D2Game.hpp"
 
 /*
  *	This file is responsible for handling all of the behavior in response to a received packet.
@@ -240,5 +241,317 @@ namespace ClientPacket
 	void ProcessPongPacket(D2Packet* pPacket)
 	{
 		cl.dwPing = engine->Milliseconds() - cl.dwLastPingPacket;
+	}
+
+	/////////////////////////////////////////////////
+	//
+	//	In-game packet handlers
+	//	Informed by Ghidra analysis of D2Client.dll: GAME/SCmd.cpp
+	//	These handle the server-to-client packets for game world state.
+
+	/*
+	 *	D2SPACKET_ASSIGNPLAYER (0x59)
+	 *	Server assigns us a player unit in the world.
+	 */
+	void ProcessAssignPlayer(D2Packet* pPacket)
+	{
+		if (gpGame == nullptr)
+		{
+			return;
+		}
+
+		// Parse the raw packet bytes
+		BYTE* data = (BYTE*)pPacket;
+		DWORD dwUnitId = *(DWORD*)(data + 1);
+		BYTE nCharClass = *(data + 5);
+		char* szName = (char*)(data + 6);
+		WORD wX = *(WORD*)(data + 22);
+		WORD wY = *(WORD*)(data + 24);
+
+		gpGame->AddPlayer(dwUnitId, nCharClass, szName, wX, wY);
+		gpGame->Initialize(dwUnitId, gpGame->GetCurrentAct(), gpGame->GetCurrentArea(),
+		                   0, gpGame->IsExpansion(), gpGame->GetDifficulty());
+	}
+
+	/*
+	 *	D2SPACKET_PLAYERJOINED (0x5B)
+	 *	Another player has joined the game.
+	 */
+	void ProcessPlayerJoined(D2Packet* pPacket)
+	{
+		if (gpGame == nullptr)
+		{
+			return;
+		}
+
+		BYTE* data = (BYTE*)pPacket;
+		DWORD dwPlayerId = *(DWORD*)(data + 3);
+		BYTE nCharClass = *(data + 7);
+		char* szName = (char*)(data + 8);
+		WORD wCharLevel = *(WORD*)(data + 24);
+		WORD wPartyId = *(WORD*)(data + 26);
+
+		gpGame->AddRosterEntry(dwPlayerId, nCharClass, szName, wCharLevel, wPartyId);
+	}
+
+	/*
+	 *	D2SPACKET_PLAYERLEFT (0x5C)
+	 *	A player has left the game.
+	 */
+	void ProcessPlayerLeft(D2Packet* pPacket)
+	{
+		if (gpGame == nullptr)
+		{
+			return;
+		}
+
+		BYTE* data = (BYTE*)pPacket;
+		DWORD dwPlayerId = *(DWORD*)(data + 1);
+
+		gpGame->RemoveRosterEntry(dwPlayerId);
+		gpGame->RemoveUnit(UNIT_PLAYER, dwPlayerId);
+	}
+
+	/*
+	 *	D2SPACKET_ASSIGNNPC (0xAC)
+	 *	Server assigns an NPC/monster in the world.
+	 */
+	void ProcessAssignNPC(D2Packet* pPacket)
+	{
+		if (gpGame == nullptr)
+		{
+			return;
+		}
+
+		BYTE* data = (BYTE*)pPacket;
+		DWORD dwUnitId = *(DWORD*)(data + 1);
+		WORD wClassId = *(WORD*)(data + 5);
+		WORD wX = *(WORD*)(data + 7);
+		WORD wY = *(WORD*)(data + 9);
+		BYTE nLife = *(data + 11);
+
+		gpGame->AddNPC(dwUnitId, wClassId, wX, wY, nLife);
+	}
+
+	/*
+	 *	D2SPACKET_REMOVEOBJECT (0x0A)
+	 *	Server removes an entity from the world.
+	 */
+	void ProcessRemoveObject(D2Packet* pPacket)
+	{
+		if (gpGame == nullptr)
+		{
+			return;
+		}
+
+		BYTE* data = (BYTE*)pPacket;
+		BYTE nUnitType = *(data + 1);
+		DWORD dwUnitId = *(DWORD*)(data + 2);
+
+		if (nUnitType < UNIT_MAX)
+		{
+			gpGame->RemoveUnit((D2UnitType)nUnitType, dwUnitId);
+		}
+	}
+
+	/*
+	 *	D2SPACKET_PLAYERSTOP (0x0D)
+	 *	A player has stopped moving.
+	 */
+	void ProcessPlayerStop(D2Packet* pPacket)
+	{
+		if (gpGame == nullptr)
+		{
+			return;
+		}
+
+		BYTE* data = (BYTE*)pPacket;
+		BYTE nUnitType = *(data + 1);
+		DWORD dwUnitId = *(DWORD*)(data + 2);
+		WORD wX = *(WORD*)(data + 7);
+		WORD wY = *(WORD*)(data + 9);
+		BYTE nLife = *(data + 12);
+
+		D2UnitStrc* pUnit = gpGame->GetUnits().FindUnit((D2UnitType)nUnitType, dwUnitId);
+		if (pUnit != nullptr)
+		{
+			pUnit->wX = wX;
+			pUnit->wY = wY;
+			pUnit->dwHP = nLife;
+			pUnit->wTargetX = wX;
+			pUnit->wTargetY = wY;
+		}
+	}
+
+	/*
+	 *	D2SPACKET_PLAYERMOVECOORD (0x0F)
+	 *	A player is moving to coordinates.
+	 */
+	void ProcessPlayerMoveCoord(D2Packet* pPacket)
+	{
+		if (gpGame == nullptr)
+		{
+			return;
+		}
+
+		BYTE* data = (BYTE*)pPacket;
+		BYTE nUnitType = *(data + 1);
+		DWORD dwUnitId = *(DWORD*)(data + 2);
+		BYTE nMoveType = *(data + 6);
+		WORD wTargetX = *(WORD*)(data + 7);
+		WORD wTargetY = *(WORD*)(data + 9);
+		WORD wCurrentX = *(WORD*)(data + 12);
+		WORD wCurrentY = *(WORD*)(data + 14);
+
+		D2UnitStrc* pUnit = gpGame->GetUnits().FindUnit((D2UnitType)nUnitType, dwUnitId);
+		if (pUnit != nullptr)
+		{
+			pUnit->wX = wCurrentX;
+			pUnit->wY = wCurrentY;
+			pUnit->wTargetX = wTargetX;
+			pUnit->wTargetY = wTargetY;
+			pUnit->dwMode = (nMoveType == 0x17) ? PLRMODE_RN : PLRMODE_WL;
+		}
+	}
+
+	/*
+	 *	D2SPACKET_NPCMOVECOORD (0x67)
+	 *	An NPC/monster is moving.
+	 */
+	void ProcessNPCMoveCoord(D2Packet* pPacket)
+	{
+		if (gpGame == nullptr)
+		{
+			return;
+		}
+
+		BYTE* data = (BYTE*)pPacket;
+		DWORD dwUnitId = *(DWORD*)(data + 1);
+		BYTE nMoveType = *(data + 5);
+		WORD wX = *(WORD*)(data + 6);
+		WORD wY = *(WORD*)(data + 8);
+
+		D2UnitStrc* pUnit = gpGame->GetUnits().FindUnit(UNIT_MONSTER, dwUnitId);
+		if (pUnit != nullptr)
+		{
+			pUnit->wTargetX = wX;
+			pUnit->wTargetY = wY;
+			pUnit->dwMode = (nMoveType == 0x17) ? MONMODE_RN : MONMODE_WL;
+		}
+	}
+
+	/*
+	 *	D2SPACKET_NPCSTOP (0x6D)
+	 *	An NPC/monster has stopped moving.
+	 */
+	void ProcessNPCStop(D2Packet* pPacket)
+	{
+		if (gpGame == nullptr)
+		{
+			return;
+		}
+
+		BYTE* data = (BYTE*)pPacket;
+		DWORD dwUnitId = *(DWORD*)(data + 1);
+		WORD wX = *(WORD*)(data + 5);
+		WORD wY = *(WORD*)(data + 7);
+		BYTE nLife = *(data + 9);
+
+		D2UnitStrc* pUnit = gpGame->GetUnits().FindUnit(UNIT_MONSTER, dwUnitId);
+		if (pUnit != nullptr)
+		{
+			pUnit->wX = wX;
+			pUnit->wY = wY;
+			pUnit->wTargetX = wX;
+			pUnit->wTargetY = wY;
+			pUnit->dwHP = nLife;
+			pUnit->dwMode = MONMODE_NU;
+		}
+	}
+
+	/*
+	 *	D2SPACKET_NPCSTATE (0x69)
+	 *	An NPC/monster state update.
+	 */
+	void ProcessNPCState(D2Packet* pPacket)
+	{
+		if (gpGame == nullptr)
+		{
+			return;
+		}
+
+		BYTE* data = (BYTE*)pPacket;
+		DWORD dwUnitId = *(DWORD*)(data + 1);
+		BYTE nState = *(data + 5);
+		WORD wX = *(WORD*)(data + 6);
+		WORD wY = *(WORD*)(data + 8);
+		BYTE nLife = *(data + 10);
+
+		D2UnitStrc* pUnit = gpGame->GetUnits().FindUnit(UNIT_MONSTER, dwUnitId);
+		if (pUnit != nullptr)
+		{
+			pUnit->wX = wX;
+			pUnit->wY = wY;
+			pUnit->dwHP = nLife;
+			pUnit->dwMode = nState;
+		}
+	}
+
+	/*
+	 *	D2SPACKET_CHAT (0x26)
+	 *	Chat message received. Currently just logged.
+	 */
+	void ProcessChat(D2Packet* pPacket)
+	{
+		// TODO: route to chat UI when implemented
+		// From Ghidra: UI/chat.cpp handles display
+	}
+
+	/*
+	 *	D2SPACKET_LIFEMANA (0x95)
+	 *	Update local player's life/mana/stamina.
+	 */
+	void ProcessLifeMana(D2Packet* pPacket)
+	{
+		if (gpGame == nullptr)
+		{
+			return;
+		}
+
+		BYTE* data = (BYTE*)pPacket;
+		WORD wLife = *(WORD*)(data + 1);
+		WORD wMana = *(WORD*)(data + 3);
+		WORD wStamina = *(WORD*)(data + 5);
+		WORD wX = *(WORD*)(data + 7);
+		WORD wY = *(WORD*)(data + 9);
+
+		D2UnitStrc* pPlayer = gpGame->GetLocalPlayer();
+		if (pPlayer != nullptr)
+		{
+			pPlayer->dwHP = wLife;
+			pPlayer->dwMana = wMana;
+			pPlayer->dwStamina = wStamina;
+			pPlayer->wX = wX;
+			pPlayer->wY = wY;
+		}
+	}
+
+	/*
+	 *	D2SPACKET_LOADACT (0x03)
+	 *	Begin loading an act.
+	 */
+	void ProcessLoadAct(D2Packet* pPacket)
+	{
+		if (gpGame == nullptr)
+		{
+			return;
+		}
+
+		BYTE* data = (BYTE*)pPacket;
+		BYTE nAct = *(data + 1);
+		WORD wAreaId = *(WORD*)(data + 6);
+
+		gpGame->Initialize(0, nAct, wAreaId, 0,
+		                   gpGame->IsExpansion(), gpGame->GetDifficulty());
 	}
 }

@@ -2,6 +2,9 @@
 #include "UI/Menus/Trademark.hpp"
 #include "UI/Menus/Main.hpp"
 #include "UI/Menus/TCPIP.hpp"
+#include "UI/Menus/Ingame.hpp"
+#include "Game/D2Game.hpp"
+#include "Game/D2Input.hpp"
 #ifdef _DEBUG
 #include "D2ClientDebug.hpp"
 #endif
@@ -38,6 +41,9 @@ static void D2Client_InitializeClient(D2GameConfigStrc* pConfig, OpenD2ConfigStr
 	// Set first menu to be trademark menu
 	cl.gamestate = GS_TRADEMARK;
 	cl.pActiveMenu = new D2Menus::Trademark();
+
+	// Initialize input bindings
+	gpInputBindings = new D2InputBindings();
 }
 
 /*
@@ -158,6 +164,17 @@ static void D2Client_HandleInput()
 					}
 				}
 #endif
+				// Process keybinds when in-game
+				if (cl.gamestate == GS_INGAME && gpInputBindings != nullptr)
+				{
+					D2BindAction action = gpInputBindings->ProcessKeyUp(pCmd->cmdData.button.buttonID, 0);
+					if (action != BIND_NONE)
+					{
+						D2Input_HandleBindAction(action);
+						break;
+					}
+				}
+
 				if (cl.pActiveMenu != nullptr)
 				{
 					cl.pActiveMenu->HandleKeyUp(pCmd->cmdData.button.buttonID);
@@ -270,6 +287,21 @@ static void D2Client_LoadData()
 	{	// go ingame
 		cl.nLoadState = 0;
 		cl.gamestate = GS_INGAME;
+
+		// Create the client game state
+		if (gpGame == nullptr)
+		{
+			gpGame = new D2ClientGame();
+			gpGame->Initialize(0, 0, D2LEVEL_ACT1_TOWN, 0,
+				config->dwExpansion != 0, config->nDifficulty);
+		}
+
+		// Switch to the in-game menu
+		if (cl.pActiveMenu != nullptr)
+		{
+			delete cl.pActiveMenu;
+		}
+		cl.pActiveMenu = new D2Menus::Ingame();
 	}
 }
 
@@ -387,6 +419,21 @@ static void D2Client_Shutdown()
 	if (cl.pActiveMenu != nullptr)
 	{
 		delete cl.pActiveMenu;
+		cl.pActiveMenu = nullptr;
+	}
+
+	// Clean up game state
+	if (gpGame != nullptr)
+	{
+		delete gpGame;
+		gpGame = nullptr;
+	}
+
+	// Clean up input bindings
+	if (gpInputBindings != nullptr)
+	{
+		delete gpInputBindings;
+		gpInputBindings = nullptr;
 	}
 }
 
@@ -398,6 +445,7 @@ static bool D2Client_HandlePacket(D2Packet* pPacket)
 {
 	switch (pPacket->nPacketType)
 	{
+		// Handshake / connection packets
 		case D2SPACKET_COMPRESSIONINFO:
 			ClientPacket::ProcessCompressionPacket(pPacket);
 			break;
@@ -409,6 +457,47 @@ static bool D2Client_HandlePacket(D2Packet* pPacket)
 			break;
 		case D2SPACKET_PONG:
 			ClientPacket::ProcessPongPacket(pPacket);
+			break;
+
+		// In-game packets (from Ghidra: GAME/SCmd.cpp dispatch table)
+		case D2SPACKET_ASSIGNPLAYER:
+			ClientPacket::ProcessAssignPlayer(pPacket);
+			break;
+		case D2SPACKET_PLAYERJOINED:
+			ClientPacket::ProcessPlayerJoined(pPacket);
+			break;
+		case D2SPACKET_PLAYERLEFT:
+			ClientPacket::ProcessPlayerLeft(pPacket);
+			break;
+		case D2SPACKET_ASSIGNNPC:
+			ClientPacket::ProcessAssignNPC(pPacket);
+			break;
+		case D2SPACKET_REMOVEOBJECT:
+			ClientPacket::ProcessRemoveObject(pPacket);
+			break;
+		case D2SPACKET_PLAYERSTOP:
+			ClientPacket::ProcessPlayerStop(pPacket);
+			break;
+		case D2SPACKET_PLAYERMOVECOORD:
+			ClientPacket::ProcessPlayerMoveCoord(pPacket);
+			break;
+		case D2SPACKET_NPCMOVECOORD:
+			ClientPacket::ProcessNPCMoveCoord(pPacket);
+			break;
+		case D2SPACKET_NPCSTOP:
+			ClientPacket::ProcessNPCStop(pPacket);
+			break;
+		case D2SPACKET_NPCSTATE:
+			ClientPacket::ProcessNPCState(pPacket);
+			break;
+		case D2SPACKET_CHAT:
+			ClientPacket::ProcessChat(pPacket);
+			break;
+		case D2SPACKET_LIFEMANA:
+			ClientPacket::ProcessLifeMana(pPacket);
+			break;
+		case D2SPACKET_LOADACT:
+			ClientPacket::ProcessLoadAct(pPacket);
 			break;
 	}
 	return true;

@@ -103,4 +103,19 @@ namespace ClientPacket
 	void ProcessSavegameStatusPacket(D2Packet* pPacket);
 	void ProcessServerMetaPacket(D2Packet* pPacket);
 	void ProcessPongPacket(D2Packet* pPacket);
+
+	// In-game packets (informed by Ghidra: GAME/SCmd.cpp, DispatchServerMessageArray)
+	void ProcessAssignPlayer(D2Packet* pPacket);
+	void ProcessPlayerJoined(D2Packet* pPacket);
+	void ProcessPlayerLeft(D2Packet* pPacket);
+	void ProcessAssignNPC(D2Packet* pPacket);
+	void ProcessRemoveObject(D2Packet* pPacket);
+	void ProcessPlayerStop(D2Packet* pPacket);
+	void ProcessPlayerMoveCoord(D2Packet* pPacket);
+	void ProcessNPCMoveCoord(D2Packet* pPacket);
+	void ProcessNPCStop(D2Packet* pPacket);
+	void ProcessNPCState(D2Packet* pPacket);
+	void ProcessChat(D2Packet* pPacket);
+	void ProcessLifeMana(D2Packet* pPacket);
+	void ProcessLoadAct(D2Packet* pPacket);
 }
