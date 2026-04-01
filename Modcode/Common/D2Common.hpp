@@ -5,7 +5,7 @@
 //
 //	Preprocessor Definitions
 
-#define D2DATATABLES_DIR	"DATA\\GLOBAL\\EXCEL\\"
+#define D2DATATABLES_DIR "DATA\\GLOBAL\\EXCEL\\"
 
 ////////////////////////////////////////////
 //
@@ -23,10 +23,10 @@ enum D2MathFunc
 
 struct D2TxtColumnStrc
 {
-	const char* szColumnName;
-	DWORD		dwColumnSize;
-	DWORD		dwColumnOffset;
-	void		(*parseCallback)();
+	const char *szColumnName;
+	DWORD dwColumnSize;
+	DWORD dwColumnOffset;
+	void (*parseCallback)();
 };
 
 ////////////////////////////////////////////
@@ -34,17 +34,18 @@ struct D2TxtColumnStrc
 //	Functions
 
 // D2Common_Math.cpp
-void Math_Perform(D2MathFunc func, DWORD* pIn, DWORD pOperand);
-uint16_t Seed_Next(uint16_t& seed);
-uint32_t Seed_Next(uint32_t& seed);
-uint64_t Seed_Next(uint64_t& seed);
-int Seed_Range(uint16_t& seed, int min, int max);
-int Seed_Range(uint32_t& seed, int min, int max);
-int Seed_Range(uint64_t& seed, int min, int max);
-int Seed_Range(int& seed, int min, int max);
+void Math_Perform(D2MathFunc func, DWORD *pIn, DWORD pOperand);
+uint16_t Seed_Next(uint16_t &seed);
+uint32_t Seed_Next(uint32_t &seed);
+uint64_t Seed_Next(uint64_t &seed);
+int Seed_Range(uint16_t &seed, int min, int max);
+int Seed_Range(uint32_t &seed, int min, int max);
+int Seed_Range(uint64_t &seed, int min, int max);
+int Seed_Range(int &seed, int min, int max);
 
 // DRLG_Main.cpp
-D2COMMONAPI void D2Common_ConstructSingleLevel(int nLevelId, int& seed);
+D2COMMONAPI void D2Common_ConstructSingleLevel(int nLevelId, int &seed);
+D2COMMONAPI D2LvlPrestTxt *D2Common_GetLvlPrestForLevel(int nLevelId);
 
 // DataTables.cpp
 void DataTables_Init();
@@ -54,6 +55,6 @@ void DataTables_Free();
 //
 //	Global Variables
 
-extern D2ModuleImportStrc* engine;
-extern D2GameConfigStrc* gpConfig;
-extern OpenD2ConfigStrc* gpOpenConfig;
+extern D2ModuleImportStrc *engine;
+extern D2GameConfigStrc *gpConfig;
+extern OpenD2ConfigStrc *gpOpenConfig;

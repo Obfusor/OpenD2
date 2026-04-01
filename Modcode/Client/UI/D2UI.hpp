@@ -17,6 +17,7 @@ namespace D2Panels
 {
 	class CharCreate;
 	class CharSelect;
+	class Cinematics;
 	class Debug;
 	class IngameMain;
 	class Main;
@@ -29,6 +30,8 @@ namespace D2Menus
 {
 	class CharCreate;
 	class CharSelect;
+	class Cinematics;
+	class Credits;
 	class Debug;
 	class Ingame;
 	class LoadError;

@@ -10,14 +10,14 @@
 
 namespace Window
 {
-	static SDL_Window* gpWindow;
+	static SDL_Window *gpWindow;
 
 	/*
 	 *	Creates a window
 	 */
-	static SDL_Window* CreateWindow(D2GameConfigStrc* pConfig, OpenD2ConfigStrc* pOpenConfig)
+	static SDL_Window *CreateWindow(D2GameConfigStrc *pConfig, OpenD2ConfigStrc *pOpenConfig)
 	{
-		SDL_Window* pWin = nullptr;
+		SDL_Window *pWin = nullptr;
 		DWORD dwWindowFlags = 0;
 
 		if (!pConfig->bWindowed)
@@ -42,9 +42,27 @@ namespace Window
 	/*
 	 *	Inits SDL and creates a window
 	 */
-	void InitSDL(D2GameConfigStrc* pConfig, OpenD2ConfigStrc* pOpenConfig)
+	void InitSDL(D2GameConfigStrc *pConfig, OpenD2ConfigStrc *pOpenConfig)
 	{
 		SDL_Init(SDL_INIT_VIDEO | SDL_INIT_AUDIO | SDL_INIT_EVENTS | SDL_INIT_TIMER);
+
+		// Set OpenGL attributes before creating the window
+		if (pConfig->bOpenGL)
+		{
+			// Try OpenGL 3.3 Core first, with fallbacks
+			SDL_GL_SetAttribute(SDL_GL_CONTEXT_MAJOR_VERSION, 3);
+			SDL_GL_SetAttribute(SDL_GL_CONTEXT_MINOR_VERSION, 3);
+			SDL_GL_SetAttribute(SDL_GL_CONTEXT_PROFILE_MASK, SDL_GL_CONTEXT_PROFILE_CORE);
+			SDL_GL_SetAttribute(SDL_GL_DOUBLEBUFFER, 1);
+			SDL_GL_SetAttribute(SDL_GL_DEPTH_SIZE, 24);
+			SDL_GL_SetAttribute(SDL_GL_STENCIL_SIZE, 8);
+
+			// Request specific color buffer sizes
+			SDL_GL_SetAttribute(SDL_GL_RED_SIZE, 8);
+			SDL_GL_SetAttribute(SDL_GL_GREEN_SIZE, 8);
+			SDL_GL_SetAttribute(SDL_GL_BLUE_SIZE, 8);
+			SDL_GL_SetAttribute(SDL_GL_ALPHA_SIZE, 8);
+		}
 
 		gpWindow = CreateWindow(pConfig, pOpenConfig);
 
@@ -67,7 +85,7 @@ namespace Window
 	/*
 	 *	Wrapper for SDL_ShowSimpleMessageBox
 	 */
-	void ShowMessageBox(int nMessageBoxType, char* szTitle, char* szMessage)
+	void ShowMessageBox(int nMessageBoxType, char *szTitle, char *szMessage)
 	{
 		SDL_ShowSimpleMessageBox(nMessageBoxType, szTitle, szMessage, gpWindow);
 	}

@@ -4,9 +4,9 @@
 
 namespace DT1
 {
-	HashMap<char, DT1File*> loadedDT1Files;
+	HashMap<char, DT1File *> loadedDT1Files;
 
-	handle LoadDT1(const char* path)
+	handle LoadDT1(const char *path)
 	{
 		handle returnValue;
 		bool isFull = false;
@@ -31,7 +31,7 @@ namespace DT1
 			return 0;
 		}
 
-		DT1File* file = loadedDT1Files[dt1Handle];
+		DT1File *file = loadedDT1Files[dt1Handle];
 		if (file == nullptr)
 		{
 			return 0;
@@ -40,14 +40,14 @@ namespace DT1
 		return file->numberOfBlocks;
 	}
 
-	const DT1File::DT1Block* GetBlock(handle dt1Handle, int blockNum)
+	const DT1File::DT1Block *GetBlock(handle dt1Handle, int blockNum)
 	{
 		if (dt1Handle == INVALID_HANDLE || blockNum < 0)
 		{
 			return nullptr;
 		}
-		
-		DT1File* file = loadedDT1Files[dt1Handle];
+
+		DT1File *file = loadedDT1Files[dt1Handle];
 		if (file == nullptr)
 		{
 			return nullptr;
@@ -61,14 +61,14 @@ namespace DT1
 		return &file->blocks[blockNum];
 	}
 
-	void* DecodeDT1Block(handle dt1Handle, int32_t blockNum, uint32_t& width, uint32_t& height, int32_t& x, int32_t& y)
+	void *DecodeDT1Block(handle dt1Handle, int32_t blockNum, uint32_t &width, uint32_t &height, int32_t &x, int32_t &y)
 	{
 		if (dt1Handle == INVALID_HANDLE || blockNum < 0)
 		{
 			return nullptr;
 		}
 
-		DT1File* file = loadedDT1Files[dt1Handle];
+		DT1File *file = loadedDT1Files[dt1Handle];
 		if (file == nullptr)
 		{
 			return nullptr;
@@ -81,24 +81,59 @@ namespace DT1
 
 		return file->DecodeBlock(blockNum, width, height, x, y);
 	}
+
+	bool GetBlockInfo(handle dt1Handle, int blockNum, DT1BlockInfo *info)
+	{
+		const DT1File::DT1Block *block = GetBlock(dt1Handle, blockNum);
+		if (block == nullptr || info == nullptr)
+		{
+			return false;
+		}
+		info->orientation = block->orientation;
+		info->mainIndex = block->mainIndex;
+		info->subIndex = block->subIndex;
+		info->rarity = block->rarity;
+		info->sizeX = block->sizeX;
+		info->sizeY = block->sizeY;
+		return true;
+	}
 }
 
 const int indexTable[25] = {
-	20, 21, 22, 23, 24,
-	15, 16, 17, 18, 19,
-	10, 11, 12, 13, 14,
-	 5,  6,  7,  8,  9,
-	 0,  1,  2,  3,  4,
+	20,
+	21,
+	22,
+	23,
+	24,
+	15,
+	16,
+	17,
+	18,
+	19,
+	10,
+	11,
+	12,
+	13,
+	14,
+	5,
+	6,
+	7,
+	8,
+	9,
+	0,
+	1,
+	2,
+	3,
+	4,
 };
 
-DT1File::DT1File(const char* path) : 
-	blocks(nullptr), 
-	fileBuffer(nullptr), 
-	numberOfBlocks(0), 
-	x1(0), 
-	x2(0), 
-	decodedBitmap(nullptr),
-	decodedSize(0)
+DT1File::DT1File(const char *path) : blocks(nullptr),
+									 fileBuffer(nullptr),
+									 numberOfBlocks(0),
+									 x1(0),
+									 x2(0),
+									 decodedBitmap(nullptr),
+									 decodedSize(0)
 {
 	fs_handle f;
 	size_t dt1Size = FS::Open(path, &f, FS_READ, true);
@@ -107,7 +142,7 @@ DT1File::DT1File(const char* path) :
 		return;
 	}
 
-	fileBuffer = (BYTE*)malloc(dt1Size);
+	fileBuffer = (BYTE *)malloc(dt1Size);
 	if (!fileBuffer)
 	{
 		return;
@@ -115,13 +150,13 @@ DT1File::DT1File(const char* path) :
 	FS::Read(f, fileBuffer, dt1Size);
 	FS::CloseFile(f);
 
-	x1 = *(DWORD*)fileBuffer;
-	x2 = *(DWORD*)((BYTE*)fileBuffer + 4);
-	numberOfBlocks = *(DWORD*)((BYTE*)fileBuffer + 268);
+	x1 = *(DWORD *)fileBuffer;
+	x2 = *(DWORD *)((BYTE *)fileBuffer + 4);
+	numberOfBlocks = *(DWORD *)((BYTE *)fileBuffer + 268);
 
-	DWORD blockHeaderOffset = *(DWORD*)((BYTE*)fileBuffer + 272);
+	DWORD blockHeaderOffset = *(DWORD *)((BYTE *)fileBuffer + 272);
 	size_t blockHeaderSize = sizeof(DT1Block) * numberOfBlocks;
-	blocks = (DT1Block*)malloc(blockHeaderSize);
+	blocks = (DT1Block *)malloc(blockHeaderSize);
 	if (blocks == nullptr)
 	{
 		free(fileBuffer);
@@ -129,30 +164,30 @@ DT1File::DT1File(const char* path) :
 	}
 
 	// read block headers
-	BYTE* readHead = (BYTE*)fileBuffer + blockHeaderOffset;
-	DT1Block* blockWriteHead = blocks;
+	BYTE *readHead = (BYTE *)fileBuffer + blockHeaderOffset;
+	DT1Block *blockWriteHead = blocks;
 	for (DWORD b = 0; b < numberOfBlocks; b++)
 	{
-		blockWriteHead->direction = *(DWORD*)readHead;
-		blockWriteHead->roofY = *(WORD*)(readHead + 4);
+		blockWriteHead->direction = *(DWORD *)readHead;
+		blockWriteHead->roofY = *(WORD *)(readHead + 4);
 		blockWriteHead->sound = *(readHead + 6);
 		blockWriteHead->animated = *(readHead + 7);
-		blockWriteHead->sizeY = *(DWORD*)(readHead + 8);
-		blockWriteHead->sizeX = *(DWORD*)(readHead + 12);
+		blockWriteHead->sizeY = *(DWORD *)(readHead + 8);
+		blockWriteHead->sizeX = *(DWORD *)(readHead + 12);
 		// 4 bytes worth of zeroes
-		blockWriteHead->orientation = *(DWORD*)(readHead + 20);
-		blockWriteHead->mainIndex = *(DWORD*)(readHead + 24);
-		blockWriteHead->subIndex = *(DWORD*)(readHead + 28);
-		blockWriteHead->rarity = *(DWORD*)(readHead + 32);
+		blockWriteHead->orientation = *(DWORD *)(readHead + 20);
+		blockWriteHead->mainIndex = *(DWORD *)(readHead + 24);
+		blockWriteHead->subIndex = *(DWORD *)(readHead + 28);
+		blockWriteHead->rarity = *(DWORD *)(readHead + 32);
 		// skip 4 bytes
 		for (int t = 0; t < 25; t++)
 		{
 			blockWriteHead->subtileFlags[indexTable[t]] = *(readHead + 40 + t);
 		}
 		// skip 7 bytes
-		blockWriteHead->tilePtr = *(DWORD*)(readHead + 72);
-		blockWriteHead->tileLen = *(DWORD*)(readHead + 76);
-		blockWriteHead->tileNumber = *(DWORD*)(readHead + 80);
+		blockWriteHead->tilePtr = *(DWORD *)(readHead + 72);
+		blockWriteHead->tileLen = *(DWORD *)(readHead + 76);
+		blockWriteHead->tileNumber = *(DWORD *)(readHead + 80);
 		// skip 12 bytes
 
 		blockWriteHead++;
@@ -172,21 +207,21 @@ DT1File::~DT1File()
 	}
 }
 
-void* DT1File::DecodeBlock(int32_t blockNum, uint32_t& width, uint32_t& height, int32_t& x, int32_t& y)
+void *DT1File::DecodeBlock(int32_t blockNum, uint32_t &width, uint32_t &height, int32_t &x, int32_t &y)
 {
 	if (blockNum < 0 || blockNum >= numberOfBlocks || blocks == nullptr)
 	{
 		return nullptr;
 	}
 
-	DT1Block& block = blocks[blockNum];
+	DT1Block &block = blocks[blockNum];
 	width = block.sizeX;
 	height = -block.sizeY;
 
 	// some orientations may modify the width and height. do that now.
 	int32_t yAdd = 96;
 	if (block.orientation == 0 || block.orientation == 15)
-	{	// floor or roof
+	{ // floor or roof
 		if (block.sizeY)
 		{
 			block.sizeY = -80;
@@ -195,7 +230,7 @@ void* DT1File::DecodeBlock(int32_t blockNum, uint32_t& width, uint32_t& height, 
 		}
 	}
 	else if (block.orientation < 15)
-	{	// upper wall, shadow, special
+	{ // upper wall, shadow, special
 		if (block.sizeY)
 		{
 			block.sizeY += 32;
@@ -215,15 +250,15 @@ void* DT1File::DecodeBlock(int32_t blockNum, uint32_t& width, uint32_t& height, 
 	{
 		// allocate original size.
 		decodedSize = D2Lib::abs<size_t>(newSize);
-		decodedBitmap = (BYTE*)malloc(decodedSize);
+		decodedBitmap = (BYTE *)malloc(decodedSize);
 	}
 	else if (newSize > decodedSize && decodedBitmap != nullptr)
 	{
 		free(decodedBitmap);
 		decodedSize = newSize;
-		decodedBitmap = (BYTE*)malloc(decodedSize);
+		decodedBitmap = (BYTE *)malloc(decodedSize);
 	}
-	
+
 	if (decodedBitmap == nullptr)
 	{
 		return nullptr;
@@ -234,11 +269,11 @@ void* DT1File::DecodeBlock(int32_t blockNum, uint32_t& width, uint32_t& height, 
 	// Draw each subtile.
 	for (int s = 0; s < block.tileNumber; s++)
 	{
-		DT1Subtile* subtile = GetSubtileAt(block, s);
+		DT1Subtile *subtile = GetSubtileAt(block, s);
 
 		auto x0 = subtile->xPosition;
 		auto y0 = yAdd + subtile->yPosition;
-		BYTE* data = fileBuffer + block.tilePtr + subtile->dataOffset;
+		BYTE *data = fileBuffer + block.tilePtr + subtile->dataOffset;
 		auto length = subtile->length;
 		auto format = subtile->format;
 
@@ -251,15 +286,15 @@ void* DT1File::DecodeBlock(int32_t blockNum, uint32_t& width, uint32_t& height, 
 			}
 
 			int x, y = 0, n;
-			int xjump[] = { 14, 12, 10, 8, 6, 4, 2, 0, 2, 4, 6, 8, 10, 12, 14 };
-			int nbpx[] = { 4, 8, 12, 16, 20, 24, 28, 32, 28, 24, 20, 16, 12, 8, 4 };
+			int xjump[] = {14, 12, 10, 8, 6, 4, 2, 0, 2, 4, 6, 8, 10, 12, 14};
+			int nbpx[] = {4, 8, 12, 16, 20, 24, 28, 32, 28, 24, 20, 16, 12, 8, 4};
 			while (length > 0)
 			{
 				x = xjump[y];
 				n = nbpx[y];
 				length -= n;
 				while (n)
-				{	// put *data at (x0+x,y0+y)
+				{ // put *data at (x0+x,y0+y)
 					decodedBitmap[(width * (y0 + y)) + (x0 + x)] = *data;
 					data++;
 					x++;
@@ -269,7 +304,7 @@ void* DT1File::DecodeBlock(int32_t blockNum, uint32_t& width, uint32_t& height, 
 			}
 		}
 		else
-		{	// "normal" RLE encoding
+		{ // "normal" RLE encoding
 			int x = 0, y = 0;
 
 			while (length > 0)
@@ -306,7 +341,7 @@ void* DT1File::DecodeBlock(int32_t blockNum, uint32_t& width, uint32_t& height, 
 	}
 }
 
-DT1File::DT1Subtile* DT1File::GetSubtileAt(const DT1Block& block, int subtileNum)
+DT1File::DT1Subtile *DT1File::GetSubtileAt(const DT1Block &block, int subtileNum)
 {
-	return (DT1Subtile*)(this->fileBuffer + block.tilePtr + (20 * subtileNum));
+	return (DT1Subtile *)(this->fileBuffer + block.tilePtr + (20 * subtileNum));
 }

@@ -1,4 +1,4 @@
-cmake_minimum_required(VERSION 3.4)
+cmake_minimum_required(VERSION 3.5)
 
 set(CMAKE_CXX_STANDARD 14)
 set(CMAKE_MODULE_PATH ${CMAKE_MODULE_PATH} "${CMAKE_CURRENT_SOURCE_DIR}/CMakeModules")
@@ -85,6 +85,20 @@ if(BUILD_GAME)
 	endif()
 
 	target_compile_definitions(game PUBLIC D2EXE)
+
+	# Copy required DLLs to output directory on Windows
+	if(WIN32)
+		add_custom_command(TARGET game POST_BUILD
+			COMMAND ${CMAKE_COMMAND} -E copy_directory
+			"${CMAKE_CURRENT_SOURCE_DIR}/Libraries/sdl/x86"
+			"$<TARGET_FILE_DIR:game>"
+		)
+		add_custom_command(TARGET game POST_BUILD
+			COMMAND ${CMAKE_COMMAND} -E copy_if_different
+			"${CMAKE_CURRENT_SOURCE_DIR}/Libraries/glew/glew32.dll"
+			"$<TARGET_FILE_DIR:game>"
+		)
+	endif()
 endif()
 
 # Build D2Common.dll
@@ -103,7 +117,7 @@ if(BUILD_D2CLIENT OR BUILD_D2SERVER)
 	set_target_properties(D2Common PROPERTIES LINKER_LANGUAGE CXX)
 
 	target_link_libraries(D2Common ${STATIC_LIBRARIES})
-	target_compile_definitions(D2Common PUBLIC D2COMMON)
+	target_compile_definitions(D2Common PRIVATE D2COMMON)
 
 	link_directories(${PROJECT_BINARY_DIR})
 endif()
@@ -132,5 +146,22 @@ if(BUILD_D2SERVER)
 	set_target_properties(D2Server PROPERTIES LINKER_LANGUAGE CXX)
 
 	target_link_libraries(D2Server ${STATIC_LIBRARIES} D2Common)
-	target_compile_definitions(D2Server PUBLIC D2SERVER)
+	target_compile_definitions(D2Server PRIVATE D2SERVER)
+endif()
+
+# Build d2s_parser.exe (standalone save file tool, no engine dependencies)
+option(BUILD_TOOLS "Build standalone tools" ON)
+if(BUILD_TOOLS)
+	message(STATUS "Including d2s_parser.exe")
+
+	file(GLOB D2SPARSER_SRC Tools/D2SaveParser/*.cpp Tools/D2SaveParser/*.hpp)
+	source_group("D2SaveParser" FILES ${D2SPARSER_SRC})
+
+	add_executable(d2s_parser ${D2SPARSER_SRC})
+	set_target_properties(d2s_parser PROPERTIES OUTPUT_NAME d2s_parser)
+	set_target_properties(d2s_parser PROPERTIES LINKER_LANGUAGE CXX)
+
+	if(WIN32)
+		set_target_properties(d2s_parser PROPERTIES LINK_FLAGS /SUBSYSTEM:CONSOLE)
+	endif()
 endif()

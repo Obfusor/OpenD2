@@ -10,47 +10,60 @@ namespace D2Widgets
 		struct CharacterSaveData
 		{
 			D2SaveHeader header;
-			char16_t name[16];	// The name gets converted into UTF-16 when we load it
+			char16_t name[16]; // The name gets converted into UTF-16 when we load it
 			char path[MAX_D2PATH_ABSOLUTE];
-			CharacterSaveData* pNext;
+			CharacterSaveData *pNext;
 
-			ITokenReference* token; // The token
-			IRenderObject* renderedToken; // The token as it is rendered
-			IRenderObject* frame; // The frame that renders around the selection
-			IRenderObject* title; // The title that gets rendered
-			IRenderObject* charName;
-			IRenderObject* classAndLevel;
-			IRenderObject* expansionChar;
+			ITokenReference *token;		  // The token
+			IRenderObject *renderedToken; // The token as it is rendered
+			IRenderObject *frame;		  // The frame that renders around the selection
+			IRenderObject *title;		  // The title that gets rendered
+			IRenderObject *charName;
+			IRenderObject *classAndLevel;
+			IRenderObject *expansionChar;
 		};
-		CharacterSaveData* pCharacterData;
-		D2Widgets::Scrollbar* pScrollBar;
-		D2Widgets::CharSelectSave* saves;
+		CharacterSaveData *pCharacterData;
+		D2Widgets::Scrollbar *pScrollBar;
+		D2Widgets::CharSelectSave *saves;
 		int nCurrentScroll;
 		int nCurrentSelection;
 		int nNumberSaves;
 
-		IGraphicsReference* greyFrameRef;
-		IGraphicsReference* frameRef;
+		// Double-click tracking
+		DWORD dwLastClickTick;
+		int nLastClickedSelection;
+
+		IGraphicsReference *greyFrameRef;
+		IGraphicsReference *frameRef;
+
+		// Scroll indicator arrows
+		IRenderObject *scrollUpArrow;
+		IRenderObject *scrollDownArrow;
 
 		const int nSlotWidth = 272;
 		const int nSlotHeight = 93;
 
 		void Clicked(DWORD dwX, DWORD dwY);
+		void ScrollUp();
+		void ScrollDown();
+		void EnsureSelectionVisible();
+		void EnterGame();
 
-		IRenderObject* topName;
+		IRenderObject *topName;
 
 	public:
-		CharSelectList(int x, int y, int w, int h, IRenderObject* renderedName);
+		CharSelectList(int x, int y, int w, int h, IRenderObject *renderedName);
 		virtual ~CharSelectList();
 
-		void AddSave(D2SaveHeader& header, char* path);
-		char16_t* GetSelectedCharacterName();
+		void AddSave(D2SaveHeader &header, char *path);
+		char16_t *GetSelectedCharacterName();
 		void LoadSave();
 
 		virtual void OnWidgetAdded();
 		virtual void Draw();
 		virtual bool HandleMouseDown(DWORD dwX, DWORD dwY);
 		virtual bool HandleMouseClick(DWORD dwX, DWORD dwY);
+		virtual bool HandleKeyDown(DWORD dwKey);
 
 		void Selected(int nNewSelection);
 	};

@@ -8,10 +8,10 @@
 #include "FileSystem.hpp"
 #include "Logging.hpp"
 
-#define D2REGISTRY_BETA_KEY	"SOFTWARE\\Blizzard Entertainment\\Diablo II Beta"
-#define D2REGISTRY_KEY		"SOFTWARE\\Blizzard Entertainment\\Diablo II"
+#define D2REGISTRY_BETA_KEY "SOFTWARE\\Blizzard Entertainment\\Diablo II Beta"
+#define D2REGISTRY_KEY "SOFTWARE\\Blizzard Entertainment\\Diablo II"
 
-#define REGISTRY_KEY_SIZE	2048
+#define REGISTRY_KEY_SIZE 2048
 
 //////////////////////////////////////////////////////////////
 //
@@ -19,15 +19,15 @@
 
 struct D2ModuleInternal
 {
-	void* dwModule;
-	D2ModuleExportStrc* pExports;
+	void *dwModule;
+	D2ModuleExportStrc *pExports;
 };
 
 //////////////////////////////////////////////////////////////
 //
 //	Global variables
 
-static D2ModuleInternal gModules[MODULE_MAX]{ 0 };
+static D2ModuleInternal gModules[MODULE_MAX]{0};
 
 //////////////////////////////////////////////////////////////
 //
@@ -37,19 +37,18 @@ namespace Sys
 {
 
 	/*
-	*	Copy registry keys from the retail game and make them available in D2.ini
-	*	This step has to be done after we've initialized the file system
-	*/
+	 *	Copy registry keys from the retail game and make them available in D2.ini
+	 *	This step has to be done after we've initialized the file system
+	 */
 	void CopySettings()
 	{
-
 	}
 
 	/*
-	*	Get topmost adapter IP address
-	*/
-#define ADAPTER_LIST_SIZE	15000
-	char16_t* GetAdapterIP()
+	 *	Get topmost adapter IP address
+	 */
+#define ADAPTER_LIST_SIZE 15000
+	char16_t *GetAdapterIP()
 	{
 		/*IP_ADAPTER_ADDRESSES* addresses = (IP_ADAPTER_ADDRESSES*)malloc(ADAPTER_LIST_SIZE);
 		PIP_ADAPTER_ADDRESSES currAddress;
@@ -93,9 +92,9 @@ namespace Sys
 	}
 
 	/*
-	*	Get default homepath
-	*/
-	void DefaultHomepath(char* szBuffer, size_t dwBufferLen)
+	 *	Get default homepath
+	 */
+	void DefaultHomepath(char *szBuffer, size_t dwBufferLen)
 	{
 		/*char* homeDirectory[MAX_PATH];
 
@@ -109,17 +108,44 @@ namespace Sys
 	}
 
 	/*
-	*	Get current working directory
-	*/
-	void GetWorkingDirectory(char* szBuffer, size_t dwBufferLen)
+	 *	Get current working directory
+	 */
+	void GetWorkingDirectory(char *szBuffer, size_t dwBufferLen)
 	{
 		getcwd(szBuffer, dwBufferLen);
 	}
 
 	/*
-	*	Given a buffer and an amount of memory, writes to the buffer "X MB (Y GB)"
-	*/
-	static void FormatMemory(char* buffer, DWORD dwBufferLen, uint64_t ullMemory)
+	 *	Get the directory where the executable is located
+	 */
+	void GetExecutableDirectory(char *szBuffer, size_t dwBufferLen)
+	{
+		char szExePath[PATH_MAX];
+		ssize_t len = readlink("/proc/self/exe", szExePath, sizeof(szExePath) - 1);
+		if (len != -1)
+		{
+			szExePath[len] = '\0';
+
+			// Find the last slash to get directory only
+			char *pLastSlash = strrchr(szExePath, '/');
+			if (pLastSlash != NULL)
+			{
+				*pLastSlash = '\0'; // Truncate at last slash
+			}
+
+			D2Lib::strncpyz(szBuffer, szExePath, dwBufferLen);
+		}
+		else
+		{
+			// Fallback to working directory
+			getcwd(szBuffer, dwBufferLen);
+		}
+	}
+
+	/*
+	 *	Given a buffer and an amount of memory, writes to the buffer "X MB (Y GB)"
+	 */
+	static void FormatMemory(char *buffer, DWORD dwBufferLen, uint64_t ullMemory)
 	{
 		double fMemoryKB = ullMemory / 1024.0;
 		double fMemoryMB = fMemoryKB / 1024.0;
@@ -145,10 +171,10 @@ namespace Sys
 	*/
 
 	/*
-	*	Get system info from the operating system
-	*	@author	eezstreet
-	*/
-	void GetSystemInfo(D2SystemInfoStrc* pInfo)
+	 *	Get system info from the operating system
+	 *	@author	eezstreet
+	 */
+	void GetSystemInfo(D2SystemInfoStrc *pInfo)
 	{
 		strcpy(pInfo->szComputerName, "quadcore");
 		strcpy(pInfo->szOSName, "Linux");
@@ -162,23 +188,23 @@ namespace Sys
 	}
 
 	/*
-	*	Create directory if it doesn't already exist
-	*/
+	 *	Create directory if it doesn't already exist
+	 */
 #ifdef CreateDirectory
 #undef CreateDirectory
 #endif
-	bool CreateDirectory(char* szPath)
+	bool CreateDirectory(char *szPath)
 	{
 		return false;
-		//return ::CreateDirectoryA(szPath, NULL);
+		// return ::CreateDirectoryA(szPath, NULL);
 	}
 
 	/*
-	*	Build a list of files with an extension filter.
-	*	If the extension filter is *.*, there is essentially no filter.
-	*	@author	eezstreet
-	*/
-	void ListFilesInDirectory(char* szPath, char* szExtensionFilter, char* szOriginalPath, int* nFiles, char(*szList)[MAX_FILE_LIST_SIZE][MAX_D2PATH_ABSOLUTE])
+	 *	Build a list of files with an extension filter.
+	 *	If the extension filter is *.*, there is essentially no filter.
+	 *	@author	eezstreet
+	 */
+	void ListFilesInDirectory(char *szPath, char *szExtensionFilter, char *szOriginalPath, int *nFiles, char (*szList)[MAX_FILE_LIST_SIZE][MAX_D2PATH_ABSOLUTE])
 	{
 		/*char szFullPath[MAX_D2PATH_ABSOLUTE]{ 0 };
 		HANDLE hFile;
@@ -203,12 +229,12 @@ namespace Sys
 	}
 
 	/*
-	*	Gets the API of a module
-	*	Note: This doesn't validate the API version etc, we need to do this manually afterward.
-	*/
-	D2ModuleExportStrc* OpenModule(OpenD2Modules nModule, D2ModuleImportStrc* pImports)
+	 *	Gets the API of a module
+	 *	Note: This doesn't validate the API version etc, we need to do this manually afterward.
+	 */
+	D2ModuleExportStrc *OpenModule(OpenD2Modules nModule, D2ModuleImportStrc *pImports)
 	{
-		char szModulePath[MAX_D2PATH_ABSOLUTE]{ 0 };
+		char szModulePath[MAX_D2PATH_ABSOLUTE]{0};
 		bool bModuleFound = false;
 
 		if (gModules[nModule].dwModule != 0)
@@ -229,17 +255,17 @@ namespace Sys
 		gModules[nModule].dwModule = dlopen(szModulePath, RTLD_LAZY);
 		Log_ErrorAssertReturn(gModules[nModule].dwModule != 0, nullptr);
 
-		D2ModuleExportStrc* (*ModuleAPI)(D2ModuleImportStrc* strc);
+		D2ModuleExportStrc *(*ModuleAPI)(D2ModuleImportStrc *strc);
 
-		ModuleAPI = (D2ModuleExportStrc*(*)(D2ModuleImportStrc*))dlsym(gModules[nModule].dwModule, "GetModuleAPI");
+		ModuleAPI = (D2ModuleExportStrc * (*)(D2ModuleImportStrc *)) dlsym(gModules[nModule].dwModule, "GetModuleAPI");
 		Log_ErrorAssertReturn(ModuleAPI != nullptr, nullptr);
 
 		return ModuleAPI(pImports);
 	}
 
 	/*
-	*	Closes a single module
-	*/
+	 *	Closes a single module
+	 */
 	void CloseModule(OpenD2Modules nModule)
 	{
 		if (gModules[nModule].dwModule == 0)
@@ -252,7 +278,7 @@ namespace Sys
 	}
 }
 
-int main(int argc, char* argv[])
+int main(int argc, char *argv[])
 {
 	return InitGame(argc, argv);
 }

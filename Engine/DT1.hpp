@@ -2,9 +2,9 @@
 #include "../Shared/D2Shared.hpp"
 
 typedef void (*DT1AllocateCallback)(unsigned int width, unsigned int height);
-typedef void (*DT1TileDecodeCallback)(BYTE* bitmap, unsigned int tileNum, unsigned int width, unsigned int height);
+typedef void (*DT1TileDecodeCallback)(BYTE *bitmap, unsigned int tileNum, unsigned int width, unsigned int height);
 
-struct DT1File 
+struct DT1File
 {
 	DWORD x1, x2;
 	DWORD numberOfBlocks;
@@ -40,22 +40,23 @@ struct DT1File
 		long dataOffset;
 	};
 
-	DT1Block* blocks;
-	BYTE* fileBuffer;
-	BYTE* decodedBitmap;
+	DT1Block *blocks;
+	BYTE *fileBuffer;
+	BYTE *decodedBitmap;
 	size_t decodedSize;
 
-	void* DecodeBlock(int32_t blockNum, uint32_t& width, uint32_t& height, int32_t& x, int32_t& y);
-	DT1Subtile* GetSubtileAt(const DT1Block& block, int subtileNum);
+	void *DecodeBlock(int32_t blockNum, uint32_t &width, uint32_t &height, int32_t &x, int32_t &y);
+	DT1Subtile *GetSubtileAt(const DT1Block &block, int subtileNum);
 
-	DT1File(const char* path);
+	DT1File(const char *path);
 	~DT1File();
 };
 
 namespace DT1
 {
-	handle LoadDT1(const char* path);
+	handle LoadDT1(const char *path);
 	DWORD GetNumBlocks(handle dt1Handle);
-	const DT1File::DT1Block* GetBlock(handle dt1Handle, int blockNum);
-	void* DecodeDT1Block(handle dt1Handle, int32_t blockNum, uint32_t& width, uint32_t& height, int32_t& x, int32_t& y);
+	const DT1File::DT1Block *GetBlock(handle dt1Handle, int blockNum);
+	void *DecodeDT1Block(handle dt1Handle, int32_t blockNum, uint32_t &width, uint32_t &height, int32_t &x, int32_t &y);
+	bool GetBlockInfo(handle dt1Handle, int blockNum, DT1BlockInfo *info);
 }

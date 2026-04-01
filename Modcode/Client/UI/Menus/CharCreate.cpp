@@ -2,7 +2,7 @@
 #include "../Panels/CharCreate.hpp"
 #include <time.h>
 
-static const char* szCharacterClassFolders[D2CLASS_MAX] = {
+static const char *szCharacterClassFolders[D2CLASS_MAX] = {
 	"Amazon",
 	"Sorceress",
 	"Necromancer",
@@ -12,7 +12,7 @@ static const char* szCharacterClassFolders[D2CLASS_MAX] = {
 	"Assassin",
 };
 
-static const char* szCharacterClassShort[D2CLASS_MAX] = {
+static const char *szCharacterClassShort[D2CLASS_MAX] = {
 	"am",
 	"so",
 	"ne",
@@ -22,7 +22,7 @@ static const char* szCharacterClassShort[D2CLASS_MAX] = {
 	"as",
 };
 
-static const char* szAnimName[CCA_MAX] = {
+static const char *szAnimName[CCA_MAX] = {
 	"nu1",
 	"nu2",
 	"nu3",
@@ -30,7 +30,7 @@ static const char* szAnimName[CCA_MAX] = {
 	"bw",
 };
 
-static const char* szAnimNameSpecial[CCA_MAX] = {
+static const char *szAnimNameSpecial[CCA_MAX] = {
 	"nu1s",
 	"nu2s",
 	"nu3s",
@@ -38,9 +38,9 @@ static const char* szAnimNameSpecial[CCA_MAX] = {
 	"bws",
 };
 
-void CharCreateData::OnCharacterCameForward(class IRenderObject* caller, void* extraData)
+void CharCreateData::OnCharacterCameForward(class IRenderObject *caller, void *extraData)
 {
-	CharCreateData* data = (CharCreateData*)extraData;
+	CharCreateData *data = (CharCreateData *)extraData;
 	data->displayObject->AttachAnimationResource(data->animationHandle[CCA_IdleFront], true);
 	data->status = CCA_IdleFront;
 	if (data->bSpecialAnimPresent[CCA_IdleFront])
@@ -49,9 +49,9 @@ void CharCreateData::OnCharacterCameForward(class IRenderObject* caller, void* e
 	}
 }
 
-void CharCreateData::OnCharacterSteppedBack(class IRenderObject* caller, void* extraData)
+void CharCreateData::OnCharacterSteppedBack(class IRenderObject *caller, void *extraData)
 {
-	CharCreateData* data = (CharCreateData*)extraData;
+	CharCreateData *data = (CharCreateData *)extraData;
 	data->displayObject->AttachAnimationResource(data->animationHandle[CCA_IdleBack], true);
 	data->status = CCA_IdleBack;
 }
@@ -67,7 +67,7 @@ namespace D2Menus
 		backgroundTexture = engine->renderer->AllocateObject(0);
 		fireAnimation = engine->renderer->AllocateObject(0);
 
-		IGraphicsReference* backgroundGraphic = engine->graphics->CreateReference("data\\global\\ui\\FrontEnd\\characterCreationScreenEXP.dc6", UsagePolicy_SingleUse);
+		IGraphicsReference *backgroundGraphic = engine->graphics->CreateReference("data\\global\\ui\\FrontEnd\\characterCreationScreenEXP.dc6", UsagePolicy_SingleUse);
 		fireGraphic = engine->graphics->CreateReference("data\\global\\ui\\FrontEnd\\fire.DC6", UsagePolicy_SingleUse);
 
 		backgroundTexture->AttachCompositeTextureResource(backgroundGraphic, 0, -1);
@@ -107,10 +107,11 @@ namespace D2Menus
 		memset(CreateData, 0, sizeof(CharCreateData) * D2CLASS_MAX);
 		for (int i = 0; i < D2CLASS_MAX; i++)
 		{
-			char szPath[MAX_D2PATH]{ 0 };
+			char szPath[MAX_D2PATH]{0};
 
 			// flag special animations that need to be done
-			switch (i) {
+			switch (i)
+			{
 			case D2CLASS_SORCERESS:
 			case D2CLASS_NECROMANCER:
 				CreateData[i].bSpecialAnimPresent[CCA_IdleFront] = true;
@@ -130,16 +131,16 @@ namespace D2Menus
 			for (int j = 0; j < CCA_MAX; j++)
 			{
 				snprintf(szPath, MAX_D2PATH,
-					"data\\global\\ui\\FrontEnd\\%s\\%s%s.dc6",
-					szCharacterClassFolders[i], szCharacterClassShort[i], szAnimName[j]);
+						 "data\\global\\ui\\FrontEnd\\%s\\%s%s.dc6",
+						 szCharacterClassFolders[i], szCharacterClassShort[i], szAnimName[j]);
 				CreateData[i].animationHandle[j] = engine->graphics->CreateReference(szPath, UsagePolicy_SingleUse);
 
 				if (CreateData[i].bSpecialAnimPresent[j])
 				{
 					// register special animations
 					snprintf(szPath, MAX_D2PATH,
-						"data\\global\\ui\\FrontEnd\\%s\\%s%s.dc6",
-						szCharacterClassFolders[i], szCharacterClassShort[i], szAnimNameSpecial[j]);
+							 "data\\global\\ui\\FrontEnd\\%s\\%s%s.dc6",
+							 szCharacterClassFolders[i], szCharacterClassShort[i], szAnimNameSpecial[j]);
 					CreateData[i].specialAnimationHandle[j] = engine->graphics->CreateReference(szPath, UsagePolicy_SingleUse);
 				}
 				else
@@ -188,13 +189,13 @@ namespace D2Menus
 			case D2CLASS_DRUID:
 				CreateData[i].nDrawXPos = 720;
 				CreateData[i].nDrawYPos = -50;
-				CreateData[i].szCharClassName = engine->TBL_FindStringFromIndex(4012);	// in classic strings, wtf? :D
+				CreateData[i].szCharClassName = engine->TBL_FindStringFromIndex(4012); // in classic strings, wtf? :D
 				CreateData[i].szCharClassDescription = engine->TBL_FindStringFromIndex(22518);
 				break;
 			case D2CLASS_ASSASSIN:
 				CreateData[i].nDrawXPos = 232;
 				CreateData[i].nDrawYPos = -50;
-				CreateData[i].szCharClassName = engine->TBL_FindStringFromIndex(4013);	// in classic strings, wtf? :D
+				CreateData[i].szCharClassName = engine->TBL_FindStringFromIndex(4013); // in classic strings, wtf? :D
 				CreateData[i].szCharClassDescription = engine->TBL_FindStringFromIndex(22519);
 				break;
 			}
@@ -222,8 +223,8 @@ namespace D2Menus
 	}
 
 	/*
- *	Destroys the character creation menu
- */
+	 *	Destroys the character creation menu
+	 */
 	CharCreate::~CharCreate()
 	{
 		engine->renderer->Remove(backgroundTexture);
@@ -334,7 +335,7 @@ namespace D2Menus
 
 		// Draw the name and description of the highlighted class
 		if (m_nSelectedClass != D2CLASS_MAX && m_nHighlightedClass == D2CLASS_MAX)
-		{	// if we have selected a class and have none highlighted, use that one for its text
+		{ // if we have selected a class and have none highlighted, use that one for its text
 			m_nHighlightedClass = m_nSelectedClass;
 		}
 
@@ -358,7 +359,7 @@ namespace D2Menus
 
 	void CharCreate::SelectCharacterClass(int classNum)
 	{
-		CharCreateData* selData = &CreateData[classNum];
+		CharCreateData *selData = &CreateData[classNum];
 		selData->displayObject->AttachAnimationResource(selData->animationHandle[CCA_BackToFront], true);
 		selData->displayObject->RemoveAnimationFinishCallbacks();
 		selData->displayObject->AddAnimationFinishedCallback(selData, CharCreateData::OnCharacterCameForward);
@@ -372,7 +373,7 @@ namespace D2Menus
 
 	void CharCreate::DeselectCharacterClass(int classNum)
 	{
-		CharCreateData* selData = &CreateData[classNum];
+		CharCreateData *selData = &CreateData[classNum];
 		selData->displayObject->AttachAnimationResource(selData->animationHandle[CCA_FrontToBack], true);
 		selData->displayObject->RemoveAnimationFinishCallbacks();
 		selData->displayObject->AddAnimationFinishedCallback(selData, CharCreateData::OnCharacterSteppedBack);
@@ -389,15 +390,15 @@ namespace D2Menus
 	 */
 	bool CharCreate::HandleMouseClicked(DWORD dwX, DWORD dwY)
 	{
-		CharCreateData* selData = &CreateData[m_nSelectedClass];
+		CharCreateData *selData = &CreateData[m_nSelectedClass];
 
 		// check to see if we clicked on a character
 		for (int i = 0; i < D2CLASS_MAX; i++)
 		{
-			CharCreateData* charData = &CreateData[i];
+			CharCreateData *charData = &CreateData[i];
 
 			if (m_nSelectedClass == i && charData->displayObject->PixelPerfectDetection(dwX, dwY))
-			{	// clicked on the currently selected character
+			{ // clicked on the currently selected character
 				DeselectCharacterClass(i);
 				HidePanel(pDynamicPanel);
 				m_nSelectedClass = D2CLASS_MAX;
@@ -432,7 +433,7 @@ namespace D2Menus
 	/*
 	 *	Handle a text input event
 	 */
-	void CharCreate::HandleTextInput(char* szText)
+	void CharCreate::HandleTextInput(char *szText)
 	{
 		if (m_nSelectedClass == D2CLASS_MAX)
 		{
@@ -478,11 +479,11 @@ namespace D2Menus
 	 */
 	bool CharCreate::TrySaveCharacter()
 	{
-		char		szSavePath[MAX_D2PATH]{ 0 };
-		char		szPlayerName[16]{ 0 };
-		int			nIteration = 0;
-		const int	nMaxIterations = 10;
-		fs_handle	f;
+		char szSavePath[MAX_D2PATH]{0};
+		char szPlayerName[16]{0};
+		int nIteration = 0;
+		const int nMaxIterations = 10;
+		fs_handle f;
 
 		memset(&cl.currentSave, 0, sizeof(cl.currentSave));
 
@@ -521,6 +522,8 @@ namespace D2Menus
 		cl.currentSave.header.dwFileSize = sizeof(cl.currentSave.header);
 		cl.currentSave.header.dwCreationTime = time(nullptr);
 		cl.currentSave.header.dwModificationTime = cl.currentSave.header.dwCreationTime;
+		D2Lib::strncpyz(cl.currentSave.header.szCharacterName, szPlayerName, 16);
+		cl.currentSave.header.nCharLevel = 1;
 
 		cl.currentSave.header.nCharStatus |= (1 << D2STATUS_NEWBIE);
 		if (pDynamicPanel->HardcoreChecked())
@@ -530,7 +533,7 @@ namespace D2Menus
 
 		cl.currentSave.header.nCharClass = m_nSelectedClass;
 		if (m_nSelectedClass == D2CLASS_ASSASSIN || m_nSelectedClass == D2CLASS_DRUID || pDynamicPanel->ExpansionChecked())
-		{	// FIXME: assassin and druid should probably have the expansion checkbox greyed out
+		{ // FIXME: assassin and druid should probably have the expansion checkbox greyed out
 			cl.currentSave.header.nCharStatus |= (1 << D2STATUS_EXPANSION);
 		}
 

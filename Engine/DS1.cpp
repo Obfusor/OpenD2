@@ -5,16 +5,16 @@
 
 namespace DS1
 {
-	HashMap<char, DS1File*> loadedDS1Files;
+	HashMap<char, DS1File *> loadedDS1Files;
 
-	handle LoadDS1(const char* path)
+	handle LoadDS1(const char *path)
 	{
 		handle returnValue;
 		bool isFull = false;
 		if (loadedDS1Files.Contains(path, &returnValue, &isFull))
 		{
 			return returnValue;
-		} 
+		}
 		else if (isFull)
 		{
 			return INVALID_HANDLE;
@@ -25,15 +25,15 @@ namespace DS1
 		return returnValue;
 	}
 
-	void GetSize(handle ds1, int32_t& width, int32_t& height)
+	void GetSize(handle ds1, int32_t &width, int32_t &height)
 	{
 		if (ds1 == INVALID_HANDLE)
 		{
 			return;
 		}
 
-		DS1File* ds1File = loadedDS1Files[ds1];
-		if(ds1File == nullptr)
+		DS1File *ds1File = loadedDS1Files[ds1];
+		if (ds1File == nullptr)
 		{
 			return;
 		}
@@ -49,7 +49,7 @@ namespace DS1
 			return 0;
 		}
 
-		DS1File* ds1File = loadedDS1Files[ds1];
+		DS1File *ds1File = loadedDS1Files[ds1];
 		if (ds1File == nullptr)
 		{
 			return 0;
@@ -58,14 +58,14 @@ namespace DS1
 		return ds1File->objectHeader.dwNumObjects;
 	}
 
-	DS1Cell* GetCellAt(handle ds1, uint32_t x, uint32_t y, const DS1CellType& type)
+	DS1Cell *GetCellAt(handle ds1, uint32_t x, uint32_t y, const DS1CellType &type)
 	{
 		if (ds1 == INVALID_HANDLE)
 		{
 			return nullptr;
 		}
 
-		DS1File* ds1File = loadedDS1Files[ds1];
+		DS1File *ds1File = loadedDS1Files[ds1];
 		if (ds1File == nullptr)
 		{
 			return nullptr;
@@ -76,47 +76,62 @@ namespace DS1
 			return nullptr; // out of bounds access
 		}
 
+		// Cell arrays are interleaved by layer count:
+		// [layer0(0,0), layer1(0,0), layer0(1,0), layer1(1,0), ...]
+		// So stride per tile = numLayers, stride per row = width * numLayers
+		DWORD w = ds1File->fileHeader.dwWidth;
 		switch (type)
 		{
-			case DS1Cell_Floor:
-				return &ds1File->pFloorCells[(y * ds1File->fileHeader.dwWidth) + x];
-			case DS1Cell_Shadow:
-				return &ds1File->pShadowCells[(y * ds1File->fileHeader.dwWidth) + x];
-			case DS1Cell_Wall:
-				return &ds1File->pWallCells[(y * ds1File->fileHeader.dwWidth) + x];
+		case DS1Cell_Floor:
+		{
+			DWORD nLayers = ds1File->layerHeader.dwFloorLayers;
+			return &ds1File->pFloorCells[(y * w * nLayers) + (x * nLayers)];
+		}
+		case DS1Cell_Shadow:
+		{
+			DWORD nLayers = ds1File->layerHeader.dwShadowLayers;
+			return &ds1File->pShadowCells[(y * w * nLayers) + (x * nLayers)];
+		}
+		case DS1Cell_Wall:
+		{
+			DWORD nLayers = ds1File->layerHeader.dwWallLayers;
+			return &ds1File->pWallCells[(y * w * nLayers) + (x * nLayers)];
+		}
 		}
 
 		return nullptr;
 	}
 
-	const DS1Object& GetObject(handle ds1, int32_t which)
+	const DS1Object &GetObject(handle ds1, int32_t which)
 	{
-		DS1File* ds1File = loadedDS1Files[ds1];
+		DS1File *ds1File = loadedDS1Files[ds1];
 		return ds1File->objects[which];
 	}
 }
 
 BYTE directionLookup[] = {
-		0x00, 0x01, 0x02, 0x01, 0x02, 0x03, 0x03, 0x05, 0x05, 0x06,
-		0x06, 0x07, 0x07, 0x08, 0x09, 0x0A, 0x0B, 0x0C, 0x0D, 0x0E,
-		0x0F, 0x10, 0x11, 0x12, 0x14
-};
+	0x00, 0x01, 0x02, 0x01, 0x02, 0x03, 0x03, 0x05, 0x05, 0x06,
+	0x06, 0x07, 0x07, 0x08, 0x09, 0x0A, 0x0B, 0x0C, 0x0D, 0x0E,
+	0x0F, 0x10, 0x11, 0x12, 0x14};
 
-DS1File::DS1File(const char* path) :
-	layerHeader({ 0 }),
-	fileHeader({ 0 }),
-	pUnknownLayer(nullptr),
-	pFloorCells(nullptr),
-	pWallCells(nullptr),
-	pShadowCells(nullptr),
-	pTagGroups(nullptr),
-	pTags(nullptr),
-	objectHeader({ 0 }),
-	dwNumTagGroups(0)
+DS1File::DS1File(const char *path) : layerHeader({0}),
+									 fileHeader({0}),
+									 pUnknownLayer(nullptr),
+									 pFloorCells(nullptr),
+									 pWallCells(nullptr),
+									 pShadowCells(nullptr),
+									 pTagGroups(nullptr),
+									 pTags(nullptr),
+									 objectHeader({0}),
+									 dwNumTagGroups(0)
 {
 	fs_handle f;
 	size_t fileSize = FS::Open(path, &f, FS_READ, true);
-	BYTE* buffer = (BYTE*)malloc(fileSize);
+	if (fileSize == 0 || f == INVALID_HANDLE)
+	{
+		return;
+	}
+	BYTE *buffer = (BYTE *)malloc(fileSize);
 	Log_ErrorAssertReturn(buffer);
 	FS::Read(f, buffer, 1, fileSize);
 	FS::CloseFile(f);
@@ -125,7 +140,7 @@ DS1File::DS1File(const char* path) :
 	memset(objects, 0, sizeof(DS1Object) * MAX_DS1_OBJECTS);
 
 	// start reading stuff into the header
-	DWORD* readHead = (DWORD*)buffer;
+	DWORD *readHead = (DWORD *)buffer;
 	fileHeader.version = *readHead;
 	readHead++;
 	fileHeader.dwWidth = (*readHead) + 1;
@@ -167,9 +182,9 @@ DS1File::DS1File(const char* path) :
 
 		for (int x = 0; x < fileHeader.dwExtraFilesCount; x++)
 		{
-			size_t n = strlen((char*)readHead) + 1;
-			D2Lib::strncpyz(optionalFileList[x], (const char*)readHead, MAX_D2PATH);
-			readHead = (DWORD*)(((char*)readHead) + n);
+			size_t n = strlen((char *)readHead) + 1;
+			D2Lib::strncpyz(optionalFileList[x], (const char *)readHead, MAX_D2PATH);
+			readHead = (DWORD *)(((char *)readHead) + n);
 		}
 	}
 
@@ -243,35 +258,35 @@ DS1File::DS1File(const char* path) :
 	DWORD wallLine = fileHeader.dwWidth * layerHeader.dwWallLayers;
 	DWORD wallLen = wallLine * fileHeader.dwHeight;
 	size_t wallBufferLen = wallLen * sizeof(DS1Cell);
-	pWallCells = (DS1Cell*)malloc(wallBufferLen);
+	pWallCells = (DS1Cell *)malloc(wallBufferLen);
 	memset(pWallCells, 0, wallBufferLen);
 
 	// floors
 	DWORD floorLine = fileHeader.dwWidth * layerHeader.dwFloorLayers;
 	DWORD floorLen = floorLine * fileHeader.dwHeight;
 	size_t floorBufferLen = floorLen * sizeof(DS1Cell);
-	pFloorCells = (DS1Cell*)malloc(floorBufferLen);
+	pFloorCells = (DS1Cell *)malloc(floorBufferLen);
 	memset(pFloorCells, 0, floorBufferLen);
 
 	// shadow
 	DWORD shadowLine = fileHeader.dwWidth * layerHeader.dwShadowLayers;
 	DWORD shadowLen = shadowLine * fileHeader.dwHeight;
 	size_t shadowBufferLen = shadowLen * sizeof(DS1Cell);
-	pShadowCells = (DS1Cell*)malloc(shadowBufferLen);
+	pShadowCells = (DS1Cell *)malloc(shadowBufferLen);
 	memset(pShadowCells, 0, shadowBufferLen);
 
 	// tags
 	DWORD tagLine = fileHeader.dwWidth * layerHeader.dwTagLayers;
 	DWORD tagLen = tagLine * fileHeader.dwHeight;
 	size_t tagBufferLen = tagLen * sizeof(DS1File::DS1Tag);
-	pTags = (DS1File::DS1Tag*)malloc(tagBufferLen);
+	pTags = (DS1File::DS1Tag *)malloc(tagBufferLen);
 	memset(pTags, 0, tagBufferLen);
 
-	DS1Cell* pFloor[MAX_DS1_FLOOR_LAYERS];
-	DS1Cell* pShadow[MAX_DS1_SHADOW_LAYERS];
-	DS1File::DS1Tag* pTag[MAX_DS1_TAG_LAYERS];
-	DS1Cell* pOrientation[MAX_DS1_WALL_LAYERS];
-	DS1Cell* pWall[MAX_DS1_WALL_LAYERS];
+	DS1Cell *pFloor[MAX_DS1_FLOOR_LAYERS];
+	DS1Cell *pShadow[MAX_DS1_SHADOW_LAYERS];
+	DS1File::DS1Tag *pTag[MAX_DS1_TAG_LAYERS];
+	DS1Cell *pOrientation[MAX_DS1_WALL_LAYERS];
+	DS1Cell *pWall[MAX_DS1_WALL_LAYERS];
 
 	for (int x = 0; x < MAX_DS1_FLOOR_LAYERS; x++)
 	{
@@ -296,7 +311,7 @@ DS1File::DS1File(const char* path) :
 
 	DWORD w = fileHeader.dwWidth;
 	DWORD h = fileHeader.dwHeight;
-	BYTE* bptr = (BYTE*)readHead;
+	BYTE *bptr = (BYTE *)readHead;
 
 	for (int n = 0; n < layerHeader.dwTotalLayersPresent; n++)
 	{
@@ -393,7 +408,7 @@ DS1File::DS1File(const char* path) :
 					if (x < w && y < h)
 					{
 						int p = layerHeader.nLayerLayout[n] - DS1LayerTypes::Tag;
-						pTag[p]->num = *((DWORD*)bptr);
+						pTag[p]->num = *((DWORD *)bptr);
 						pTag[p] += layerHeader.dwTagLayers;
 					}
 					bptr += 4;
@@ -403,7 +418,7 @@ DS1File::DS1File(const char* path) :
 		}
 	}
 
-	readHead = (DWORD*)bptr;
+	readHead = (DWORD *)bptr;
 
 	// load objects
 	objectHeader.dwNumObjects = 0;
@@ -419,7 +434,7 @@ DS1File::DS1File(const char* path) :
 			if (n > MAX_DS1_OBJECTS)
 			{
 				Log::Warning("DS1 %s has more objects (%d) than max (%d), loaded objects will be truncated.\n",
-					path, objectHeader.dwNumObjects, MAX_DS1_OBJECTS);
+							 path, objectHeader.dwNumObjects, MAX_DS1_OBJECTS);
 				objectHeader.dwNumObjects = MAX_DS1_OBJECTS;
 				break;
 			}
@@ -459,7 +474,7 @@ DS1File::DS1File(const char* path) :
 		readHead++;
 
 		size_t groupSize = dwNumTagGroups * sizeof(DS1File::DS1TagGroup);
-		pTagGroups = (DS1File::DS1TagGroup*)malloc(groupSize);
+		pTagGroups = (DS1File::DS1TagGroup *)malloc(groupSize);
 		if (pTagGroups == nullptr)
 		{
 			return;
@@ -468,29 +483,29 @@ DS1File::DS1File(const char* path) :
 
 		for (DWORD x = 0; x < dwNumTagGroups; x++)
 		{
-			if ((BYTE*)readHead < buffer + fileSize)
+			if ((BYTE *)readHead < buffer + fileSize)
 			{
 				pTagGroups[x].tileX = *readHead;
 			}
 			readHead++;
-			if ((BYTE*)readHead < buffer + fileSize)
+			if ((BYTE *)readHead < buffer + fileSize)
 			{
 				pTagGroups[x].tileY = *readHead;
 			}
 			readHead++;
-			if ((BYTE*)readHead < buffer + fileSize)
+			if ((BYTE *)readHead < buffer + fileSize)
 			{
 				pTagGroups[x].width = *readHead;
 			}
 			readHead++;
-			if ((BYTE*)readHead < buffer + fileSize)
+			if ((BYTE *)readHead < buffer + fileSize)
 			{
 				pTagGroups[x].height = *readHead;
 			}
 			readHead++;
 			if (fileHeader.version >= 13)
 			{
-				if ((BYTE*)readHead < buffer + fileSize)
+				if ((BYTE *)readHead < buffer + fileSize)
 				{
 					pTagGroups[x].unknown = *readHead;
 				}
@@ -503,14 +518,14 @@ DS1File::DS1File(const char* path) :
 	if (fileHeader.version >= 14)
 	{
 		DWORD npc = 0;
-		if ((BYTE*)readHead < buffer + fileSize)
+		if ((BYTE *)readHead < buffer + fileSize)
 		{
 			npc = *readHead;
 		}
 		readHead++;
 
 		for (DWORD n = 0; n < npc; n++)
-		{	// note, we don't check for out of bound access here because there aren't any incomplete DS1s like this
+		{ // note, we don't check for out of bound access here because there aren't any incomplete DS1s like this
 			DWORD path = *readHead;
 			readHead++;
 			DWORD x = *readHead;
@@ -545,9 +560,9 @@ DS1File::DS1File(const char* path) :
 			{
 				// There are at least 2 objects at the same coordinates.
 				Log::Print(OpenD2LogFlags::PRIORITY_MESSAGE, "Found two objects at the same coordinates in %s.\n",
-					path);
+						   path);
 				Log::Print(OpenD2LogFlags::PRIORITY_MESSAGE, "Removing %d path points at coordinates (%d,%d)\n",
-					path, x, y);
+						   path, x, y);
 
 				// first, delete the already assigned paths
 				for (o = 0; o < objectHeader.dwNumObjects; o++)
@@ -561,11 +576,11 @@ DS1File::DS1File(const char* path) :
 
 				// skip these paths
 				if (fileHeader.version >= 15)
-				{	// 3 dwords
+				{ // 3 dwords
 					readHead += (3 * path);
 				}
 				else
-				{	// 2 dwords
+				{ // 2 dwords
 					readHead += (2 * path);
 				}
 			}
@@ -580,7 +595,7 @@ DS1File::DS1File(const char* path) :
 					objects[o].paths[p].y = *readHead;
 					readHead++;
 					if (fileHeader.version >= 15)
-					{	// version 15 adds more than 1 action type per path
+					{ // version 15 adds more than 1 action type per path
 						objects[o].paths[p].action = *readHead;
 						readHead++;
 					}
@@ -598,10 +613,12 @@ DS1File::DS1File(const char* path) :
 
 DS1File::~DS1File()
 {
-#define FreeIfExisting(x) if(x) free(x);
+#define FreeIfExisting(x) \
+	if (x)                \
+		free(x);
 	FreeIfExisting(pFloorCells);
 	FreeIfExisting(pShadowCells);
 	FreeIfExisting(pTagGroups);
 	FreeIfExisting(pTags);
-#undef	FreeIfExisting
+#undef FreeIfExisting
 }

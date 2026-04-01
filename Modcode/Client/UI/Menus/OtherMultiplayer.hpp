@@ -7,13 +7,17 @@ namespace D2Menus
 	class OtherMultiplayer : public D2Menu
 	{
 	private:
-		tex_handle backgroundTexture;
-		anim_handle flameLeftAnim;
-		anim_handle flameRightAnim;
-		anim_handle blackLeftAnim;
-		anim_handle blackRightAnim;
+		IRenderObject *backgroundObject;
+		IRenderObject *flameLeft;
+		IRenderObject *flameRight;
+		IRenderObject *blackLeft;
+		IRenderObject *blackRight;
+		IRenderObject *versionText;
 
-		D2Panels::OtherMultiplayer* m_panel;
+		IGraphicsReference *background;
+
+		D2Panels::OtherMultiplayer *m_panel;
+
 	public:
 		OtherMultiplayer();
 		virtual ~OtherMultiplayer();

@@ -2,7 +2,7 @@
 #include <glm/vec3.hpp>
 #include <glm/mat4x4.hpp> // glm::mat4
 #include <glm/gtc/type_ptr.hpp>
-#include <glm/ext/matrix_transform.hpp> // glm::translate, glm::rotate, glm::scale
+#include <glm/ext/matrix_transform.hpp>	 // glm::translate, glm::rotate, glm::scale
 #include <glm/ext/matrix_clip_space.hpp> // glm::perspective
 #include "FileSystem.hpp"
 #include "GraphicsManager.hpp"
@@ -11,8 +11,8 @@
 #include "DC6.hpp"
 
 static size_t NumberDrawnThisFrame[RenderProgram_NumPrograms];
-static GLRenderObject*** DrawList;
-static GLRenderObject*** NewDrawList;
+static GLRenderObject ***DrawList;
+static GLRenderObject ***NewDrawList;
 static size_t DrawListSize[RenderProgram_NumPrograms];
 
 // UI phase
@@ -44,8 +44,7 @@ static GLfloat defaultQuadVertices[] = {
 
 	0.0f, 1.0f, 0.0f, 1.0f,
 	1.0f, 1.0f, 1.0f, 1.0f,
-	1.0f, 0.0f, 1.0f, 0.0f
-};
+	1.0f, 0.0f, 1.0f, 0.0f};
 
 /**
  * GLRenderObjects are things that are rendered onscreen.
@@ -72,7 +71,7 @@ GLRenderObject::~GLRenderObject()
 
 void GLRenderObject::Draw()
 {
-	Renderer_GL* glRenderer = dynamic_cast<Renderer_GL*>(RenderTarget);
+	Renderer_GL *glRenderer = dynamic_cast<Renderer_GL *>(RenderTarget);
 	glRenderer->AddToRenderQueue(this);
 }
 
@@ -133,7 +132,7 @@ void GLRenderObject::Render()
 	else if (objectType == RO_Token)
 	{
 		// Tokens are rendered differently from most other objects because they use multiple components
-		ITokenReference* token = data.tokenData.attachedTokenResource;
+		ITokenReference *token = data.tokenData.attachedTokenResource;
 		if (!token)
 		{
 			return;
@@ -162,13 +161,12 @@ void GLRenderObject::Render()
 		renderedFrame %= numFrames;
 		data.tokenData.lastFrameTime = ticks;
 
-
 		for (int i = COMP_MAX - 1; i >= 0; i--)
 		{
-			const char* armorType = data.tokenData.armorType[i];
+			const char *armorType = data.tokenData.armorType[i];
 
 			if (!token->HasComponentForMode(i, hitclass, mode) || armorType[0] == '\0')
-			{	// If this token lacks this component, don't draw it
+			{ // If this token lacks this component, don't draw it
 				continue;
 			}
 
@@ -176,7 +174,7 @@ void GLRenderObject::Render()
 
 			// What we really need is to get the animation resource for the component,
 			// and stream in its texture...
-			IGraphicsReference* component = token->GetTokenGraphic(i, hitclass, mode, armorType);
+			IGraphicsReference *component = token->GetTokenGraphic(i, hitclass, mode, armorType);
 			GLuint texture;
 
 			if (component == nullptr)
@@ -193,8 +191,9 @@ void GLRenderObject::Render()
 				// not loaded, get it!
 				component->SetDirectionCount(token->GetNumberOfDirections(mode, hitclass));
 				texture = (GLuint)component->LoadSingleDirection(direction,
-					/*                  animation allocate callback               */
-					[](unsigned int directionWidth, unsigned int directionHeight) -> void* {
+																 /*                  animation allocate callback               */
+																 [](unsigned int directionWidth, unsigned int directionHeight) -> void *
+																 {
 						GLuint returnResult;
 
 						glActiveTexture(GL_TEXTURE0);
@@ -207,10 +206,10 @@ void GLRenderObject::Render()
 						glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_BORDER);
 						glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_BORDER);
 
-						return (void*)returnResult;
-					},
-					/*                  frame decode callback               */
-					[](void* pixels, void* extraData, int32_t frameNum, int32_t frameX, int32_t frameY, int32_t frameW, int32_t frameH) {
+						return (void*)returnResult; },
+																 /*                  frame decode callback               */
+																 [](void *pixels, void *extraData, int32_t frameNum, int32_t frameX, int32_t frameY, int32_t frameW, int32_t frameH)
+																 {
 						GLuint texture = (GLuint)extraData;
 
 						glActiveTexture(GL_TEXTURE0);
@@ -218,11 +217,10 @@ void GLRenderObject::Render()
 						glBindTexture(GL_TEXTURE_2D, texture);
 						glTexSubImage2D(GL_TEXTURE_2D, 0, frameX, 0, frameW, frameH, GL_RED,
 							GL_UNSIGNED_BYTE, pixels);
-						glPixelStorei(GL_PACK_ALIGNMENT, 1);
-				});
-				component->SetLoadedGraphicsData((void*)texture, -1, direction);
+						glPixelStorei(GL_PACK_ALIGNMENT, 1); });
+				component->SetLoadedGraphicsData((void *)texture, -1, direction);
 			}
-			
+
 			// Bind the texture for the component
 			glActiveTexture(GL_TEXTURE0);
 			glBindTexture(GL_TEXTURE_2D, texture);
@@ -241,8 +239,7 @@ void GLRenderObject::Render()
 				screenCoord[0] + offsetX,
 				screenCoord[1] - frameHeight + offsetY,
 				frameWidth,
-				frameHeight - 1
-			};
+				frameHeight - 1};
 
 			// Set GPU variables and draw it!
 			glUniform4fv(uniform_ui_drawPosition, 1, drawCoords);
@@ -271,10 +268,10 @@ void GLRenderObject::Render()
 		// update animation frame and set texture coordinates, if appropriate
 		uint64_t ticks = SDL_GetTicks();
 		int lastFrame = data.animationData.currentFrame;
-		
+
 		data.animationData.currentFrame += (ticks - data.animationData.lastFrameTime) / (1000.0f / data.animationData.frameRate);
 		int renderedFrame = data.animationData.currentFrame;
-		
+
 		if (data.animationData.bLoop)
 		{
 			renderedFrame %= data.animationData.numFrames;
@@ -288,7 +285,7 @@ void GLRenderObject::Render()
 		if (lastFrame != renderedFrame)
 		{
 			if (renderedFrame < lastFrame || renderedFrame == data.animationData.numFrames - 1)
-			{	// if the current frame is less than the last frame or we are on the last frame, run the finish callback
+			{ // if the current frame is less than the last frame or we are on the last frame, run the finish callback
 				// run all of the callbacks for finishing
 				for (int i = 0; i < data.animationData.numFinishCallbacks; i++)
 				{
@@ -296,15 +293,15 @@ void GLRenderObject::Render()
 					{
 						data.animationData.finishCallback[i].callback(this, data.animationData.finishCallback[i].extraData);
 					}
-					
+
 					if (renderedFrame < lastFrame)
-					{	// we run the callback every time we loop ... ?
+					{ // we run the callback every time we loop ... ?
 						data.animationData.finishCallback[i].bHaveRun = false;
 					}
 				}
 
 				if (renderedFrame < lastFrame)
-				{	// animation has been reset, reset the frame callbacks
+				{ // animation has been reset, reset the frame callbacks
 					for (int i = 0; i < data.animationData.numFrameCallbacks; i++)
 					{
 						data.animationData.frameCallback[i].bHaveRun = false;
@@ -316,7 +313,7 @@ void GLRenderObject::Render()
 			{
 				if (renderedFrame >= data.animationData.frameCallback[i].frame &&
 					!data.animationData.frameCallback[i].bHaveRun)
-				{	// current frame is greater than (or equal to) this frame callback's frame and hasn't been run. run it now!
+				{ // current frame is greater than (or equal to) this frame callback's frame and hasn't been run. run it now!
 					data.animationData.frameCallback[i].callback(this, data.animationData.frameCallback[i].frame, data.animationData.frameCallback[i].extraData);
 					data.animationData.frameCallback[i].bHaveRun = true;
 				}
@@ -339,13 +336,12 @@ void GLRenderObject::Render()
 		uint32_t frameWidth, frameHeight;
 		int32_t offsetX, offsetY;
 		data.animationData.attachedAnimationResource->GetGraphicsData(nullptr, renderedFrame,
-			&frameWidth, &frameHeight, &offsetX, &offsetY);
+																	  &frameWidth, &frameHeight, &offsetX, &offsetY);
 
-		GLfloat drawCoords[] = { screenCoord[0] + offsetX,
-			screenCoord[1] + 400 - frameHeight + offsetY, // offset is supposed to be additive downwards, perhaps..?
-			frameWidth,
-			frameHeight - 1
-		};
+		GLfloat drawCoords[] = {screenCoord[0] + offsetX,
+								screenCoord[1] + 400 - frameHeight + offsetY, // offset is supposed to be additive downwards, perhaps..?
+								frameWidth,
+								frameHeight - 1};
 
 		uint32_t x, y, w, h;
 		data.animationData.attachedAnimationResource->GetAtlasInfo(renderedFrame, &x, &y, &w, &h);
@@ -360,10 +356,10 @@ void GLRenderObject::Render()
 
 		glUniform4fv(uniform_ui_drawPosition, 1, drawCoords);
 	}
-	else if(objectType == RO_Text)
+	else if (objectType == RO_Text)
 	{
-		char16_t* p = data.textData.text;
-		IGraphicsReference* fontResource = data.textData.attachedFontResource;
+		char16_t *p = data.textData.text;
+		IGraphicsReference *fontResource = data.textData.attachedFontResource;
 		uint32_t glyphWidth, glyphHeight;
 		int32_t glyphOffsetX, glyphOffsetY;
 		uint32_t currentDrawX = screenCoord[0];
@@ -372,18 +368,17 @@ void GLRenderObject::Render()
 		fontResource->GetGraphicsInfo(true, 0, 255, &w, &h);
 
 		GLfloat drawCoord[] = {
-			screenCoord[0], screenCoord[1], 0, 0
-		};
+			screenCoord[0], screenCoord[1], 0, 0};
 
-		while(p && *p)
-		{	// draw each individual letter
+		while (p && *p)
+		{ // draw each individual letter
 			fontResource->GetGraphicsData(nullptr, *p, &glyphWidth, &glyphHeight, &glyphOffsetX, &glyphOffsetY);
-			
+
 			textureCoord[0] = glyphOffsetX / (float)w;
 			textureCoord[1] = (glyphOffsetY) / (float)h;
 			textureCoord[2] = (glyphWidth) / (float)w;
 			textureCoord[3] = (glyphHeight) / (float)h;
-				
+
 			drawCoord[0] = currentDrawX;
 			drawCoord[2] = glyphWidth;
 			drawCoord[3] = glyphHeight;
@@ -395,39 +390,38 @@ void GLRenderObject::Render()
 			currentDrawX += glyphWidth;
 			p++;
 		}
-		return;	
+		return;
 	}
 	else
 	{
 		glUniform4fv(uniform_ui_drawPosition, 1, screenCoord);
 	}
 
-
 	glUniform4fv(uniform_ui_textureCoords, 1, textureCoord);
 	glDrawArrays(GL_TRIANGLES, 0, 6);
 }
 
-void GLRenderObject::AttachTextureResource(IGraphicsReference* handle, int32_t frame)
+void GLRenderObject::AttachTextureResource(IGraphicsReference *handle, int32_t frame)
 {
-	if(frame < 0)
+	if (frame < 0)
 	{
 		frame = 0;
 	}
 
-	if(!handle)
+	if (!handle)
 	{
 		return;
 	}
 
 	objectType = RO_Static;
 
-	if(handle->AreGraphicsLoaded() && handle->GetLoadedGraphicsFrame() == frame)
+	if (handle->AreGraphicsLoaded() && handle->GetLoadedGraphicsFrame() == frame)
 	{
 		texture = (unsigned int)handle->GetLoadedGraphicsData();
 	}
 	else
 	{
-		void* pixels;
+		void *pixels;
 		uint32_t frameW, frameH;
 
 		handle->GetGraphicsData(&pixels, frame, &frameW, &frameH, nullptr, nullptr);
@@ -435,7 +429,7 @@ void GLRenderObject::AttachTextureResource(IGraphicsReference* handle, int32_t f
 		glGenTextures(1, &texture);
 		glBindTexture(GL_TEXTURE_2D, texture);
 		glTexImage2D(GL_TEXTURE_2D, 0, GL_RED, frameW, frameH, 0, GL_RED,
-				GL_UNSIGNED_BYTE, pixels);
+					 GL_UNSIGNED_BYTE, pixels);
 		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAX_LEVEL, 0);
 		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
 		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
@@ -445,28 +439,28 @@ void GLRenderObject::AttachTextureResource(IGraphicsReference* handle, int32_t f
 		screenCoord[2] = frameW;
 		screenCoord[3] = frameH;
 
-		handle->SetLoadedGraphicsData((void*)texture, frame);
+		handle->SetLoadedGraphicsData((void *)texture, frame);
 	}
 }
 
-void GLRenderObject::AttachCompositeTextureResource(IGraphicsReference* handle,
-		int32_t startFrame, int32_t endFrame)
+void GLRenderObject::AttachCompositeTextureResource(IGraphicsReference *handle,
+													int32_t startFrame, int32_t endFrame)
 {
 	uint32_t width, height;
 
-	if(!handle)
+	if (!handle)
 	{
 		return;
 	}
 
 	objectType = RO_Static;
 
-	if(startFrame < 0)
+	if (startFrame < 0)
 	{
 		startFrame = 0;
 	}
 
-	if(startFrame > endFrame && endFrame != -1)
+	if (startFrame > endFrame && endFrame != -1)
 	{
 		int32_t swap;
 		swap = startFrame;
@@ -474,7 +468,7 @@ void GLRenderObject::AttachCompositeTextureResource(IGraphicsReference* handle,
 		endFrame = swap;
 	}
 
-	if(startFrame == 0 && endFrame == -1 && handle->AreGraphicsLoaded())
+	if (startFrame == 0 && endFrame == -1 && handle->AreGraphicsLoaded())
 	{
 		texture = (unsigned int)handle->GetLoadedGraphicsData();
 	}
@@ -487,7 +481,7 @@ void GLRenderObject::AttachCompositeTextureResource(IGraphicsReference* handle,
 		glGenTextures(1, &texture);
 		glBindTexture(GL_TEXTURE_2D, texture);
 		glTexImage2D(GL_TEXTURE_2D, 0, GL_RED, width, height, 0, GL_RED,
-				GL_UNSIGNED_BYTE, nullptr);
+					 GL_UNSIGNED_BYTE, nullptr);
 		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAX_LEVEL, 0);
 		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
 		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
@@ -496,21 +490,21 @@ void GLRenderObject::AttachCompositeTextureResource(IGraphicsReference* handle,
 
 		glPixelStorei(GL_UNPACK_ALIGNMENT, 1);
 		handle->IterateFrames(false, startFrame, endFrame,
-			[](void* pixels, int32_t frameNum, int32_t frameX, int32_t frameY, int32_t frameW, int32_t frameH) {
-				glTexSubImage2D(GL_TEXTURE_2D, 0, frameX, frameY, frameW, frameH, GL_RED,
-						GL_UNSIGNED_BYTE, pixels);
-			}
-		);
+							  [](void *pixels, int32_t frameNum, int32_t frameX, int32_t frameY, int32_t frameW, int32_t frameH)
+							  {
+								  glTexSubImage2D(GL_TEXTURE_2D, 0, frameX, frameY, frameW, frameH, GL_RED,
+												  GL_UNSIGNED_BYTE, pixels);
+							  });
 		glPixelStorei(GL_PACK_ALIGNMENT, 1);
 
-		if(startFrame == 0 && endFrame == -1)
+		if (startFrame == 0 && endFrame == -1)
 		{
-			handle->SetLoadedGraphicsData((void*)texture);
+			handle->SetLoadedGraphicsData((void *)texture);
 		}
 	}
 }
 
-void GLRenderObject::AttachAnimationResource(IGraphicsReference* handle, bool bResetFrame)
+void GLRenderObject::AttachAnimationResource(IGraphicsReference *handle, bool bResetFrame)
 {
 	if (!handle)
 	{
@@ -529,7 +523,7 @@ void GLRenderObject::AttachAnimationResource(IGraphicsReference* handle, bool bR
 	data.animationData.attachedAnimationResource = handle;
 	data.animationData.bLoop = true;
 
-	if(handle->AreGraphicsLoaded())
+	if (handle->AreGraphicsLoaded())
 	{
 		texture = (unsigned int)handle->GetLoadedGraphicsData();
 	}
@@ -542,7 +536,7 @@ void GLRenderObject::AttachAnimationResource(IGraphicsReference* handle, bool bR
 		glGenTextures(1, &texture);
 		glBindTexture(GL_TEXTURE_2D, texture);
 		glTexImage2D(GL_TEXTURE_2D, 0, GL_RED, width, height, 0, GL_RED,
-			GL_UNSIGNED_BYTE, nullptr);
+					 GL_UNSIGNED_BYTE, nullptr);
 		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAX_LEVEL, 0);
 		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
 		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
@@ -550,20 +544,19 @@ void GLRenderObject::AttachAnimationResource(IGraphicsReference* handle, bool bR
 		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_BORDER);
 
 		glPixelStorei(GL_UNPACK_ALIGNMENT, 1);
-		handle->IterateFrames(true, 0, -1, 
-			[](void* pixels, int32_t frameNum, int32_t frameX, int32_t frameY, int32_t frameW, int32_t frameH) {
-				glTexSubImage2D(GL_TEXTURE_2D, 0, frameX, frameY, frameW, frameH, GL_RED,
-					GL_UNSIGNED_BYTE, pixels);
-				
-			}
-		);
+		handle->IterateFrames(true, 0, -1,
+							  [](void *pixels, int32_t frameNum, int32_t frameX, int32_t frameY, int32_t frameW, int32_t frameH)
+							  {
+								  glTexSubImage2D(GL_TEXTURE_2D, 0, frameX, frameY, frameW, frameH, GL_RED,
+												  GL_UNSIGNED_BYTE, pixels);
+							  });
 		glPixelStorei(GL_PACK_ALIGNMENT, 1);
 
-		handle->SetLoadedGraphicsData((void*)texture);
+		handle->SetLoadedGraphicsData((void *)texture);
 	}
 }
 
-void GLRenderObject::AttachTokenResource(ITokenReference* handle)
+void GLRenderObject::AttachTokenResource(ITokenReference *handle)
 {
 	memset(&data, 0, sizeof(data));
 	objectType = RO_Token;
@@ -573,7 +566,7 @@ void GLRenderObject::AttachTokenResource(ITokenReference* handle)
 	data.tokenData.frameRate = 12;
 }
 
-void GLRenderObject::AttachFontResource(IGraphicsReference* handle)
+void GLRenderObject::AttachFontResource(IGraphicsReference *handle)
 {
 	if (!handle)
 	{
@@ -584,7 +577,7 @@ void GLRenderObject::AttachFontResource(IGraphicsReference* handle)
 	data.textData.attachedFontResource = handle;
 	data.textData.text[0] = '\0';
 
-	if(handle->AreGraphicsLoaded())
+	if (handle->AreGraphicsLoaded())
 	{
 		texture = (unsigned int)handle->GetLoadedGraphicsData();
 	}
@@ -597,7 +590,7 @@ void GLRenderObject::AttachFontResource(IGraphicsReference* handle)
 		glGenTextures(1, &texture);
 		glBindTexture(GL_TEXTURE_2D, texture);
 		glTexImage2D(GL_TEXTURE_2D, 0, GL_RED, width, height, 0, GL_RED,
-			GL_UNSIGNED_BYTE, nullptr);
+					 GL_UNSIGNED_BYTE, nullptr);
 		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAX_LEVEL, 0);
 		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
 		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
@@ -606,17 +599,18 @@ void GLRenderObject::AttachFontResource(IGraphicsReference* handle)
 
 		glPixelStorei(GL_UNPACK_ALIGNMENT, 1);
 		handle->IterateFrames(true, 0, -1,
-			[](void* pixels, int32_t frameNum, int32_t frameX, int32_t frameY, int32_t frameW, int32_t frameH) {
-			glTexSubImage2D(GL_TEXTURE_2D, 0, frameX, frameY, frameW, frameH, GL_RED,
-				GL_UNSIGNED_BYTE, pixels);
-		});
+							  [](void *pixels, int32_t frameNum, int32_t frameX, int32_t frameY, int32_t frameW, int32_t frameH)
+							  {
+								  glTexSubImage2D(GL_TEXTURE_2D, 0, frameX, frameY, frameW, frameH, GL_RED,
+												  GL_UNSIGNED_BYTE, pixels);
+							  });
 		glPixelStorei(GL_PACK_ALIGNMENT, 1);
 
-		handle->SetLoadedGraphicsData((void*)texture);
+		handle->SetLoadedGraphicsData((void *)texture);
 	}
 }
 
-void GLRenderObject::AttachTileResource(IGraphicsReference* handle, int tileIndex, int layer)
+void GLRenderObject::AttachTileResource(IGraphicsReference *handle, int tileIndex, int layer)
 {
 	if (!handle)
 	{
@@ -627,8 +621,7 @@ void GLRenderObject::AttachTileResource(IGraphicsReference* handle, int tileInde
 	data.tileData = {
 		handle,
 		tileIndex,
-		layer
-	};
+		layer};
 
 	if (handle->AreGraphicsLoaded())
 	{
@@ -647,22 +640,22 @@ void GLRenderObject::AttachTileResource(IGraphicsReference* handle, int tileInde
 		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
 		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_BORDER);
 		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_BORDER);
-		
+
 		glPixelStorei(GL_UNPACK_ALIGNMENT, 1);
 		handle->IterateFrames(true, 0, -1,
-			[](void* pixels, int32_t frameNum, int32_t frameX, int32_t frameY, int32_t frameW, int32_t frameH) {
-				glTexSubImage2D(GL_TEXTURE_2D, 0, frameX, frameY, frameW, frameH, GL_RED,
-					GL_UNSIGNED_BYTE, pixels);
-			});
+							  [](void *pixels, int32_t frameNum, int32_t frameX, int32_t frameY, int32_t frameW, int32_t frameH)
+							  {
+								  glTexSubImage2D(GL_TEXTURE_2D, 0, frameX, frameY, frameW, frameH, GL_RED,
+												  GL_UNSIGNED_BYTE, pixels);
+							  });
 		glPixelStorei(GL_PACK_ALIGNMENT, 1);
 
-		handle->SetLoadedGraphicsData((void*)texture);
+		handle->SetLoadedGraphicsData((void *)texture);
 	}
 }
 
 void GLRenderObject::SetPalshift(BYTE palette)
 {
-	
 }
 
 void GLRenderObject::SetDrawCoords(int x, int y, int w, int h)
@@ -673,30 +666,30 @@ void GLRenderObject::SetDrawCoords(int x, int y, int w, int h)
 	{
 		screenCoord[2] = w;
 	}
-		
+
 	if (h >= 0)
 	{
 		screenCoord[3] = h;
 	}
 }
 
-void GLRenderObject::GetDrawCoords(int* x, int* y, int* w, int* h)
+void GLRenderObject::GetDrawCoords(int *x, int *y, int *w, int *h)
 {
 	if (x)
 	{
 		*x = screenCoord[0];
 	}
-		
+
 	if (y)
 	{
 		*y = screenCoord[1];
 	}
-		
+
 	if (w)
 	{
 		*w = screenCoord[2];
 	}
-		
+
 	if (h)
 	{
 		*h = screenCoord[3];
@@ -719,14 +712,26 @@ void GLRenderObject::SetDrawMode(int _drawMode)
 	drawMode = _drawMode;
 }
 
-void GLRenderObject::SetText(const char16_t* text)
+void GLRenderObject::SetText(const char16_t *text)
 {
 	size_t s = 0;
-	char16_t* p = (char16_t*)text;
+	char16_t *p = (char16_t *)text;
 	uint32_t width = 0;
 	uint32_t glyphWidth, glyphHeight;
 	uint32_t height = 0;
-	IGraphicsReference* fontHandle = data.textData.attachedFontResource;
+	IGraphicsReference *fontHandle = data.textData.attachedFontResource;
+
+	if (fontHandle == nullptr)
+	{
+		// No font attached - just store the text without measuring
+		while (*p && s < 128)
+		{
+			data.textData.text[s++] = *p;
+			p++;
+		}
+		data.textData.text[s] = '\0';
+		return;
+	}
 
 	while (*p && s < 128)
 	{
@@ -760,30 +765,30 @@ void GLRenderObject::SetTextAlignment(int x, int y, int w, int h, int horzAlignm
 
 	switch (horzAlignment)
 	{
-		case ALIGN_CENTER:
-			screenCoord[0] = x + (w / 2) - (textWidth / 2);
-			break;
-		default:
-		case ALIGN_LEFT:
-			screenCoord[0] = x;
-			break;
-		case ALIGN_RIGHT:
-			screenCoord[0] = x + w - textWidth;
-			break;
+	case ALIGN_CENTER:
+		screenCoord[0] = x + (w / 2) - (textWidth / 2);
+		break;
+	default:
+	case ALIGN_LEFT:
+		screenCoord[0] = x;
+		break;
+	case ALIGN_RIGHT:
+		screenCoord[0] = x + w - textWidth;
+		break;
 	}
 
 	switch (vertAlignment)
 	{
-		case ALIGN_CENTER:
-			screenCoord[1] = y + (h / 2) - (textHeight / 2);
-			break;
-		default:
-		case ALIGN_TOP:
-			screenCoord[1] = y;
-			break;
-		case ALIGN_BOTTOM:
-			screenCoord[1] = y + h - textHeight;
-			break;
+	case ALIGN_CENTER:
+		screenCoord[1] = y + (h / 2) - (textHeight / 2);
+		break;
+	default:
+	case ALIGN_TOP:
+		screenCoord[1] = y;
+		break;
+	case ALIGN_BOTTOM:
+		screenCoord[1] = y + h - textHeight;
+		break;
 	}
 }
 
@@ -807,30 +812,28 @@ void GLRenderObject::SetAnimationLoop(bool bLoop)
 	data.animationData.bLoop = bLoop;
 }
 
-void GLRenderObject::AddAnimationFinishedCallback(void* extraData, AnimationFinishCallback callback)
+void GLRenderObject::AddAnimationFinishedCallback(void *extraData, AnimationFinishCallback callback)
 {
-	int& numCallbacks = data.animationData.numFinishCallbacks;
+	int &numCallbacks = data.animationData.numFinishCallbacks;
 	if (numCallbacks >= MAX_ANIMATION_CALLBACKS)
 	{
 		return; // too many
 	}
 
 	data.animationData.finishCallback[numCallbacks++] = {
-		false, callback, extraData
-	};
+		false, callback, extraData};
 }
 
-void GLRenderObject::AddAnimationFrameCallback(int32_t frame, void* extraData, AnimationFrameCallback callback)
+void GLRenderObject::AddAnimationFrameCallback(int32_t frame, void *extraData, AnimationFrameCallback callback)
 {
-	int& numCallbacks = data.animationData.numFrameCallbacks;
+	int &numCallbacks = data.animationData.numFrameCallbacks;
 	if (numCallbacks >= MAX_ANIMATION_CALLBACKS)
 	{
 		return; // too many
 	}
 
 	data.animationData.frameCallback[numCallbacks++] = {
-		false, callback, extraData, frame
-	};
+		false, callback, extraData, frame};
 }
 
 void GLRenderObject::RemoveAnimationFinishCallbacks()
@@ -873,7 +876,7 @@ void GLRenderObject::SetTokenMode(int newMode)
 	}
 }
 
-void GLRenderObject::SetTokenArmorLevel(int component, const char* armorLevel)
+void GLRenderObject::SetTokenArmorLevel(int component, const char *armorLevel)
 {
 	if (objectType == RO_Token)
 	{
@@ -889,7 +892,7 @@ void GLRenderObject::SetTokenHitClass(int hitclass)
 	}
 }
 
-void GLRenderObject::SetAsRectanglePrimitive(float x, float y, float w, float h, float strokeWidth, float* strokeColor, float* fillColor)
+void GLRenderObject::SetAsRectanglePrimitive(float x, float y, float w, float h, float strokeWidth, float *strokeColor, float *fillColor)
 {
 	objectType = RO_Primitive;
 	data.primitiveData.position[0] = x;
@@ -908,7 +911,7 @@ void GLRenderObject::SetAsRectanglePrimitive(float x, float y, float w, float h,
 		data.primitiveData.fillColor[2] = fillColor[2];
 		data.primitiveData.fillColor[3] = fillColor[3];
 	}
-	
+
 	data.primitiveData.strokeWidth = strokeWidth;
 	if (!strokeColor)
 	{
@@ -922,12 +925,11 @@ void GLRenderObject::SetAsRectanglePrimitive(float x, float y, float w, float h,
 		data.primitiveData.strokeColor[2] = strokeColor[2];
 		data.primitiveData.strokeColor[3] = strokeColor[3];
 	}
-	
-	data.primitiveData.type = data.primitiveData.PT_RECTANGLE;
 
+	data.primitiveData.type = data.primitiveData.PT_RECTANGLE;
 }
 
-void GLRenderObject::SetAsLinePrimitive(float x1, float x2, float y1, float y2, float strokeWidth, float* strokeColor)
+void GLRenderObject::SetAsLinePrimitive(float x1, float x2, float y1, float y2, float strokeWidth, float *strokeColor)
 {
 	objectType = RO_Primitive;
 	data.primitiveData.position[0] = x1;
@@ -965,7 +967,7 @@ GLRenderPool::GLRenderPool(size_t initialSize)
 	{
 		// crash if nullptr?
 		memset(MemoryPool, 0, sizeof(initialSize));
-		head = (GLRenderObject*)MemoryPool;
+		head = (GLRenderObject *)MemoryPool;
 	}
 }
 
@@ -979,7 +981,7 @@ GLRenderPool::~GLRenderPool()
 	free(MemoryPool);
 }
 
-GLRenderObject* GLRenderPool::Allocate()
+GLRenderObject *GLRenderPool::Allocate()
 {
 	if (elementsRemaining <= 0)
 	{
@@ -993,14 +995,14 @@ GLRenderObject* GLRenderPool::Allocate()
 	elementsRemaining--;
 	remaining -= sizeof(GLRenderObject);
 
-	GLRenderObject* newObject = new (head) GLRenderObject();
+	GLRenderObject *newObject = new (head) GLRenderObject();
 	head++;
-	if ((unsigned char*)head - (unsigned char*)MemoryPool >= initial)
+	if ((unsigned char *)head - (unsigned char *)MemoryPool >= initial)
 	{
-		head = (GLRenderObject*)MemoryPool;
+		head = (GLRenderObject *)MemoryPool;
 		if (elementsRemaining > 0)
-		{	// find next free
-			while ((unsigned char*)head - (unsigned char*)MemoryPool < initial)
+		{ // find next free
+			while ((unsigned char *)head - (unsigned char *)MemoryPool < initial)
 			{
 				if (head->bInUse)
 				{
@@ -1017,10 +1019,10 @@ GLRenderObject* GLRenderPool::Allocate()
 	return newObject;
 }
 
-void GLRenderPool::Deallocate(GLRenderObject* object)
+void GLRenderPool::Deallocate(GLRenderObject *object)
 {
-	unsigned char* location = (unsigned char*)object;
-	unsigned char* poolLocation = (unsigned char*)MemoryPool;
+	unsigned char *location = (unsigned char *)object;
+	unsigned char *poolLocation = (unsigned char *)MemoryPool;
 
 	if (location - poolLocation < 0 || location - poolLocation > initial)
 	{
@@ -1049,29 +1051,25 @@ D2Palettes Renderer_GL::GetGlobalPalette()
 	return (D2Palettes)global_palette;
 }
 
-IRenderObject* Renderer_GL::AllocateObject(int stage)
+IRenderObject *Renderer_GL::AllocateObject(int stage)
 {
-	GLRenderObject* allocated = pool->Allocate();
+	GLRenderObject *allocated = pool->Allocate();
 	allocated->renderProgram = RenderProgram_Diffuse;
 	return allocated;
 }
 
-void Renderer_GL::Remove(IRenderObject* Object)
+void Renderer_GL::Remove(IRenderObject *Object)
 {
-	pool->Deallocate((GLRenderObject*)Object);
+	pool->Deallocate((GLRenderObject *)Object);
 }
 
-Renderer_GL::Renderer_GL(D2GameConfigStrc * pConfig, OpenD2ConfigStrc * pOpenConfig, SDL_Window * pWindow)
+Renderer_GL::Renderer_GL(D2GameConfigStrc *pConfig, OpenD2ConfigStrc *pOpenConfig, SDL_Window *pWindow)
 {
-	SDL_GL_SetAttribute(SDL_GL_CONTEXT_MAJOR_VERSION, 3);
-	SDL_GL_SetAttribute(SDL_GL_CONTEXT_MINOR_VERSION, 3);
-	SDL_GL_SetAttribute(SDL_GL_CONTEXT_PROFILE_MASK, SDL_GL_CONTEXT_PROFILE_CORE);
-
-	DrawList = new GLRenderObject**[RenderProgram_NumPrograms];
+	DrawList = new GLRenderObject **[RenderProgram_NumPrograms];
 	for (int i = 0; i < RenderProgram_NumPrograms; i++)
 	{
 		DrawListSize[i] = 2048;
-		DrawList[i] = new GLRenderObject*[DrawListSize[i]];
+		DrawList[i] = new GLRenderObject *[DrawListSize[i]];
 		NumberDrawnThisFrame[i] = 0;
 	}
 
@@ -1124,7 +1122,7 @@ Renderer_GL::Renderer_GL(D2GameConfigStrc * pConfig, OpenD2ConfigStrc * pOpenCon
 
 	for (int i = 0; i < PAL_MAX_PALETTES; i++)
 	{
-		BYTE rgba[] = { 0, 0, 0, 0 };
+		BYTE rgba[] = {0, 0, 0, 0};
 
 		glTexSubImage2D(GL_TEXTURE_2D, 0, 0, i, 256, 1, GL_BGR, GL_UNSIGNED_BYTE, Pal::GetPalette(i));
 		glTexSubImage2D(GL_TEXTURE_2D, 0, 0, i, 1, 1, GL_RGBA, GL_UNSIGNED_BYTE, rgba);
@@ -1138,10 +1136,10 @@ Renderer_GL::Renderer_GL(D2GameConfigStrc * pConfig, OpenD2ConfigStrc * pOpenCon
 
 	glBindVertexArray(VAO);
 	glEnableVertexAttribArray(0);
-	glVertexAttribPointer(0, 4, GL_FLOAT, GL_FALSE, 4 * sizeof(GLfloat), (GLvoid*)0);
+	glVertexAttribPointer(0, 4, GL_FLOAT, GL_FALSE, 4 * sizeof(GLfloat), (GLvoid *)0);
 }
 
-void Renderer_GL::LoadShaderText(const char* shaderText, unsigned int& shader, unsigned int shaderType)
+void Renderer_GL::LoadShaderText(const char *shaderText, unsigned int &shader, unsigned int shaderType)
 {
 	char shaderLog[1024];
 	GLint status;
@@ -1159,15 +1157,15 @@ void Renderer_GL::LoadShaderText(const char* shaderText, unsigned int& shader, u
 	}
 }
 
-void Renderer_GL::LoadProgram(const char* shaderFile, unsigned int& program, void(*fallbackIfNotFound)(unsigned int &program, const char *programFile))
+void Renderer_GL::LoadProgram(const char *shaderFile, unsigned int &program, void (*fallbackIfNotFound)(unsigned int &program, const char *programFile))
 {
 	GLint numFormats, desiredFormat, status;
-	GLint* formats;
+	GLint *formats;
 	program = glCreateProgram();
 
 	glGetIntegerv(GL_NUM_PROGRAM_BINARY_FORMATS, &numFormats);
 	if (numFormats < 1)
-	{	// no supported formats = fail
+	{ // no supported formats = fail
 		fallbackIfNotFound(program, shaderFile);
 		return;
 	}
@@ -1177,7 +1175,7 @@ void Renderer_GL::LoadProgram(const char* shaderFile, unsigned int& program, voi
 	size_t programSize = FS::Open(shaderFile, &f, FS_READ, true);
 
 	if (!f || !programSize)
-	{	// Program file was not found
+	{ // Program file was not found
 		if (!programSize)
 		{
 			FS::CloseFile(f);
@@ -1186,12 +1184,12 @@ void Renderer_GL::LoadProgram(const char* shaderFile, unsigned int& program, voi
 		return;
 	}
 
-	formats = (GLint*)malloc(sizeof(GLint) * numFormats);
+	formats = (GLint *)malloc(sizeof(GLint) * numFormats);
 	glGetIntegerv(GL_PROGRAM_BINARY_FORMATS, formats);
 	desiredFormat = formats[0]; // just use the first available format
 	free(formats);
 
-	void* programMemory = malloc(programSize);
+	void *programMemory = malloc(programSize);
 	glProgramBinary(program, desiredFormat, programMemory, programSize);
 	free(programMemory);
 
@@ -1203,10 +1201,10 @@ void Renderer_GL::LoadProgram(const char* shaderFile, unsigned int& program, voi
 	}
 }
 
-void Renderer_GL::SaveProgram(unsigned int program, const char* shaderFile)
+void Renderer_GL::SaveProgram(unsigned int program, const char *shaderFile)
 {
 	GLint numFormats, desiredFormat, binaryLength;
-	GLint* formats;
+	GLint *formats;
 
 	glGetIntegerv(GL_NUM_PROGRAM_BINARY_FORMATS, &numFormats);
 	if (numFormats < 1)
@@ -1215,7 +1213,7 @@ void Renderer_GL::SaveProgram(unsigned int program, const char* shaderFile)
 	}
 
 	// get list of available formats
-	formats = (GLint*)malloc(sizeof(GLint) * numFormats);
+	formats = (GLint *)malloc(sizeof(GLint) * numFormats);
 	glGetIntegerv(GL_PROGRAM_BINARY_FORMATS, formats);
 	desiredFormat = formats[0]; // just use the first available format
 	free(formats);
@@ -1228,8 +1226,8 @@ void Renderer_GL::SaveProgram(unsigned int program, const char* shaderFile)
 	glGetProgramiv(program, GL_PROGRAM_BINARY_LENGTH, &binaryLength);
 
 	// allocate memory, fill with program binary from GPU, then write it and free the allocated memory
-	void* buffer = malloc(binaryLength);
-	glGetProgramBinary(program, binaryLength, nullptr, (GLenum*)&desiredFormat, buffer);
+	void *buffer = malloc(binaryLength);
+	glGetProgramBinary(program, binaryLength, nullptr, (GLenum *)&desiredFormat, buffer);
 	FS::Write(f, buffer, binaryLength);
 	free(buffer);
 
@@ -1237,7 +1235,7 @@ void Renderer_GL::SaveProgram(unsigned int program, const char* shaderFile)
 	FS::CloseFile(f);
 }
 
-void Renderer_GL::LinkProgram(unsigned int program, const char* programName)
+void Renderer_GL::LinkProgram(unsigned int program, const char *programName)
 {
 	GLint compileStatus;
 
@@ -1259,7 +1257,7 @@ void Renderer_GL::LinkProgram(unsigned int program, const char* programName)
 // location = 2; in sampler2D - palshift
 // There are also the following uniforms:
 // uniform byte globalPalette; -- this is the game's global palette
-const char* __staticDC6_Vertex = "#version 330 core                            \n\
+const char *__staticDC6_Vertex = "#version 330 core                            \n\
 layout (location = 0) in vec4 vertex; // <vec2 position, vec2 texCoords>       \n\
 uniform mat4 ModelViewProjection;                                              \n\
 uniform vec4 DrawPosition;                                                     \n\
@@ -1274,7 +1272,7 @@ void main()                                                                    \
 }                                                                              \
 ";
 
-const char* __staticDC6_Fragment = "#version 330 core                          \n\
+const char *__staticDC6_Fragment = "#version 330 core                          \n\
 uniform sampler2D Texture;                                                     \n\
 uniform sampler2D GlobalPalette;                                               \n\
 uniform vec4 ColorModulate;                                                    \n\
@@ -1292,7 +1290,7 @@ void main()                                                                    \
 }                                                                              \
 ";
 
-const char* __drawRectangle_Vertex = "#version 330 core                       \n\
+const char *__drawRectangle_Vertex = "#version 330 core                       \n\
 layout (location = 0) in vec4 vertex; // <vec2 position, vec2 texCoords>      \n\
 uniform vec4 DrawPosition;                                                    \n\
 uniform mat4 ModelViewProjection;                                             \n\
@@ -1304,7 +1302,7 @@ void main()                                                                   \n
 }                                                                             \n\
 ";
 
-const char* __drawRectangle_Frag = "#version 330 core                         \n\
+const char *__drawRectangle_Frag = "#version 330 core                         \n\
 uniform vec4 Color;                                                           \n\
 out vec4 outputColor;                                                         \n\
                                                                               \n\
@@ -1318,7 +1316,8 @@ void Renderer_GL::InitShaders()
 {
 	// Load the program.
 	// The lambda function gets called when the program hasn't been previously compiled.
-	LoadProgram("pass_ui.gl", global_programs[RenderProgram_Diffuse], [](unsigned int& program, const char* programFile) {
+	LoadProgram("pass_ui.gl", global_programs[RenderProgram_Diffuse], [](unsigned int &program, const char *programFile)
+				{
 		unsigned int vertexShader, fragmentShader;
 
 		glm::mat4 projMat = glm::ortho(0.0f, 800.0f, 600.0f, 0.0f, -1.0f, 1.0f);
@@ -1344,10 +1343,10 @@ void Renderer_GL::InitShaders()
 		uniform_ui_textureCoords = glGetUniformLocation(program, "TexPosition");
 		uniform_ui_colorModulate = glGetUniformLocation(program, "ColorModulate");
 		glUseProgram(program);
-		glUniformMatrix4fv(glGetUniformLocation(program, "ModelViewProjection"), 1, false, glm::value_ptr(mvp));
-	});
+		glUniformMatrix4fv(glGetUniformLocation(program, "ModelViewProjection"), 1, false, glm::value_ptr(mvp)); });
 
-	LoadProgram("debug_rect.gl", global_programs[RenderProgram_FlatColor], [](unsigned int& program, const char* programFile) {
+	LoadProgram("debug_rect.gl", global_programs[RenderProgram_FlatColor], [](unsigned int &program, const char *programFile)
+				{
 		unsigned int vertexShader, fragmentShader;
 
 		glm::mat4 projMat = glm::ortho(0.0f, 800.0f, 600.0f, 0.0f, -1.0f, 1.0f);
@@ -1369,8 +1368,7 @@ void Renderer_GL::InitShaders()
 		uniform_rect_drawColor = glGetUniformLocation(program, "Color");
 		uniform_rect_drawPosition = glGetUniformLocation(program, "DrawPosition");
 		glUseProgram(program);
-		glUniformMatrix4fv(glGetUniformLocation(program, "ModelViewProjection"), 1, false, glm::value_ptr(mvp));
-	});
+		glUniformMatrix4fv(glGetUniformLocation(program, "ModelViewProjection"), 1, false, glm::value_ptr(mvp)); });
 }
 
 void Renderer_GL::DeleteShaders()
@@ -1394,7 +1392,7 @@ Renderer_GL::~Renderer_GL()
 	}
 }
 
-void Renderer_GL::AddToRenderQueue(class GLRenderObject* Object)
+void Renderer_GL::AddToRenderQueue(class GLRenderObject *Object)
 {
 	if (NumberDrawnThisFrame[Object->renderProgram] < DrawListSize[Object->renderProgram])
 	{
@@ -1403,7 +1401,7 @@ void Renderer_GL::AddToRenderQueue(class GLRenderObject* Object)
 	else
 	{
 		DrawListSize[Object->renderProgram] *= 2;
-		NewDrawList[Object->renderProgram] = new GLRenderObject*[DrawListSize[Object->renderProgram]];
+		NewDrawList[Object->renderProgram] = new GLRenderObject *[DrawListSize[Object->renderProgram]];
 		for (int i = 0; i < DrawListSize[Object->renderProgram] / 2; i++)
 		{
 			NewDrawList[Object->renderProgram][i] = DrawList[Object->renderProgram][i];
@@ -1414,17 +1412,17 @@ void Renderer_GL::AddToRenderQueue(class GLRenderObject* Object)
 	}
 }
 
-void Renderer_GL::DrawRectangle(float x, float y, float w, float h, float strokeWidth, float* strokeColor, float* fillColor)
+void Renderer_GL::DrawRectangle(float x, float y, float w, float h, float strokeWidth, float *strokeColor, float *fillColor)
 {
-	GLRenderObject* allocated = pool->Allocate();
+	GLRenderObject *allocated = pool->Allocate();
 	allocated->renderProgram = RenderProgram_Diffuse;
 	allocated->SetAsRectanglePrimitive(x, y, w, h, strokeWidth, strokeColor, fillColor);
 	AddToRenderQueue(allocated);
 }
 
-void Renderer_GL::DrawLine(float x1, float x2, float y1, float y2, float strokeWidth, float* strokeColor)
+void Renderer_GL::DrawLine(float x1, float x2, float y1, float y2, float strokeWidth, float *strokeColor)
 {
-	GLRenderObject* allocated = pool->Allocate();
+	GLRenderObject *allocated = pool->Allocate();
 	allocated->renderProgram = RenderProgram_Diffuse;
 	allocated->SetAsLinePrimitive(x1, x2, y1, y2, strokeWidth, strokeColor);
 	AddToRenderQueue(allocated);
@@ -1432,7 +1430,7 @@ void Renderer_GL::DrawLine(float x1, float x2, float y1, float y2, float strokeW
 
 void Renderer_GL::Present()
 {
-	//clear color and depth buffer 
+	// clear color and depth buffer
 	glViewport(0, 0, 800, 600);
 
 	glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
@@ -1468,7 +1466,7 @@ void Renderer_GL::Clear()
 	}
 }
 
-void Renderer_GL::DeleteLoadedGraphicsData(void* loadedData, class IGraphicsReference* ref)
+void Renderer_GL::DeleteLoadedGraphicsData(void *loadedData, class IGraphicsReference *ref)
 {
 	unsigned int texture = (unsigned int)loadedData;
 	glDeleteTextures(1, &texture);

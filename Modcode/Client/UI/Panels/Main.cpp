@@ -2,28 +2,29 @@
 #include "../Menus/CharCreate.hpp"
 #include "../Menus/CharSelect.hpp"
 #include "../Menus/OtherMultiplayer.hpp"
+#include "../Menus/Credits.hpp"
+#include "../Menus/Cinematics.hpp"
 #ifdef _DEBUG
 #include "../Menus/Debug.hpp"
 #endif
 
-#define TBLTEXT_SINGLEPLAYER	5106
-#define TBLTEXT_BATTLENET		5107
-#define TBLTEXT_MULTIPLAYER		5108
-#define TBLTEXT_EXIT			5109
-#define TBLTEXT_CREDITS			5110
-#define TBLTEXT_CINEMATICS		5111
+#define TBLTEXT_SINGLEPLAYER 5106
+#define TBLTEXT_BATTLENET 5107
+#define TBLTEXT_MULTIPLAYER 5108
+#define TBLTEXT_EXIT 5109
+#define TBLTEXT_CREDITS 5110
+#define TBLTEXT_CINEMATICS 5111
 
-#define MAIN_BUTTON_DC6			"data\\global\\ui\\FrontEnd\\3WideButtonBlank.dc6"
-#define BATTLE_BUTTON_DC6		"data\\global\\ui\\FrontEnd\\WideButtonBlank02.dc6"
-#define SMALL_BUTTON_DC6		"data\\global\\ui\\FrontEnd\\MediumButtonBlank.dc6"
-#define THIN_BUTTON_DC6			"data\\global\\ui\\FrontEnd\\NarrowButtonBlank.dc6"
+#define MAIN_BUTTON_DC6 "data\\global\\ui\\FrontEnd\\3WideButtonBlank.dc6"
+#define BATTLE_BUTTON_DC6 "data\\global\\ui\\FrontEnd\\WideButtonBlank02.dc6"
+#define SMALL_BUTTON_DC6 "data\\global\\ui\\FrontEnd\\MediumButtonBlank.dc6"
+#define THIN_BUTTON_DC6 "data\\global\\ui\\FrontEnd\\NarrowButtonBlank.dc6"
 
 /**	Tries to advance to the character select screen.
-	 *	If there's no save files present, it advances to the character creation screen instead.
-	 */
+ *	If there's no save files present, it advances to the character creation screen instead.
+ */
 void D2Client_AdvanceToCharSelect()
 {
-	
 }
 
 namespace D2Panels
@@ -67,7 +68,8 @@ namespace D2Panels
 		m_cinematicsButton->AttachText(engine->TBL_FindStringFromIndex(TBLTEXT_CINEMATICS));
 		m_exitButton->AttachText(engine->TBL_FindStringFromIndex(TBLTEXT_EXIT));
 
-		m_singleplayerButton->AddEventListener(Clicked, [] {
+		m_singleplayerButton->AddEventListener(Clicked, []
+											   {
 			cl.szCurrentIPDestination[0] = '\0'; // set IP to blank
 			engine->NET_SetPlayerCount(1);
 			cl.charSelectContext = CSC_SINGLEPLAYER;
@@ -84,23 +86,31 @@ namespace D2Panels
 			{
 				cl.pActiveMenu = new D2Menus::CharSelect(szFileList, nNumFiles);
 				engine->FS_FreeFileList(szFileList, nNumFiles);
-			}
-			});
+			} });
 
-		m_multiplayerButton->AddEventListener(Clicked, [] {
+		m_multiplayerButton->AddEventListener(Clicked, []
+											  {
 			delete cl.pActiveMenu;
-			cl.pActiveMenu = new D2Menus::OtherMultiplayer();
-			});
+			cl.pActiveMenu = new D2Menus::OtherMultiplayer(); });
 
-		m_exitButton->AddEventListener(Clicked, [] {
-			cl.bKillGame = true;
-			});
+		m_exitButton->AddEventListener(Clicked, []
+									   { cl.bKillGame = true; });
+
+		m_creditsButton->AddEventListener(Clicked, []
+										  {
+			delete cl.pActiveMenu;
+			cl.pActiveMenu = new D2Menus::Credits(); });
+
+		m_cinematicsButton->AddEventListener(Clicked, []
+											 {
+			delete cl.pActiveMenu;
+			cl.pActiveMenu = new D2Menus::Cinematics(); });
 
 #ifdef _DEBUG
-		m_debugMapButton->AddEventListener(Clicked, [] {
+		m_debugMapButton->AddEventListener(Clicked, []
+										   {
 			delete cl.pActiveMenu;
-			cl.pActiveMenu = new D2Menus::Debug();
-			});
+			cl.pActiveMenu = new D2Menus::Debug(); });
 #endif
 
 		// Disable the battle.net button and the gateway button.

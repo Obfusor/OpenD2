@@ -25,7 +25,16 @@ If you would like to contribute to this project, please fork it and submit pull 
 #### Windows
 To compile this project on Windows, all you will need is CMake and Visual Studio 2017 or later.
 
-Run cmake-gui and set the Source directory to this folder. Set the "Where to build the files" to be ./Build. (This is so that the git repository doesn't pick this up as a source directory). Then, simply open the project file in whatever IDE you want.
+**Command Line Build:**
+```cmd
+cmake -B build -G "Visual Studio 17 2022" -A Win32
+cmake --build build --config Release
+```
+
+**Using CMake GUI:**
+Run cmake-gui and set the Source directory to this folder. Set the "Where to build the files" to be ./build. (This is so that the git repository doesn't pick this up as a source directory). Then, simply open the project file in whatever IDE you want.
+
+**Dependencies:** The project includes all necessary libraries (SDL2, GLEW, GLM) and automatically copies required DLLs to the output directory during build.
 
 #### Linux
 Compilation on Linux requires the following prerequisites:
@@ -56,9 +65,31 @@ And OpenD2 adds a few of its own, which start with `+` instead of `-`:
 * `+borderless` - Run in borderless windowed mode
 * `+logflags=...` - Set the priority for logging information. These are flags. 1 = Log Crashes, 2 = Log messages, 4 = Log debug info, 8 = Log system info, 16 = "prettify" the log
 
-*Generally speaking*, you will want to run with `+basepath="C:/Program Files (x86)/Diablo II"` (assuming you have the default install directory)
+**Default Behavior:** The game now defaults to using the executable directory as the basepath, so you can run it directly without parameters in most cases.
 
-In order to play, you must host a game in TCP/IP in vanilla Diablo 2 (version 1.10) and join it through the OpenD2 client. This is because OpenD2 does not have a serverside yet.
+**Example commands:**
+```cmd
+# Basic windowed mode (uses executable directory as basepath)
+game.exe -w
+
+# With specific Diablo II installation path
+game.exe -w '+basepath="C:/Program Files (x86)/Diablo II"'
+
+# With custom installation path
+game.exe -w '+basepath="D:/Games/Diablo II"'
+
+# Use the provided launcher scripts (for convenience)
+launch_opend2.bat
+# or
+launch_opend2_advanced.bat "C:/Games/Diablo II"
+```
+
+**Requirements for running:**
+1. Graphics drivers supporting OpenGL 3.3 or later
+2. Diablo II (version 1.10) for game assets (optional - can run without)
+3. To play multiplayer: host a TCP/IP game in vanilla Diablo 2 first, then join it through OpenD2
+
+**Note:** OpenD2 now runs standalone and doesn't require an existing Diablo II installation to start. However, you'll need the original game files for full functionality.
 
 ### Architecture
 Just as in the original game, there are several interlocking components driving the game. The difference is that all but the core can be swapped out by a mod.

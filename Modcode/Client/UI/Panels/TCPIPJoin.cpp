@@ -1,14 +1,12 @@
 #include "TCPIPJoin.hpp"
 #include "../Menus/TCPIP.hpp"
-#include "../Widgets/Button.hpp"
-#include "../Widgets/TextEntry.hpp"
 
-#define DC6_PANEL_BACKGROUND	"data\\global\\ui\\FrontEnd\\PopUpOkCancel2.dc6"
-#define DC6_PANEL_BUTTON		"data\\global\\ui\\FrontEnd\\MediumButtonBlank.dc6"
+#define DC6_PANEL_BACKGROUND "data\\global\\ui\\FrontEnd\\PopUpOkCancel2.dc6"
+#define DC6_PANEL_BUTTON "data\\global\\ui\\FrontEnd\\MediumButtonBlank.dc6"
 
-#define TBLTEXT_OK				5102
-#define TBLTEXT_CANCEL			5103
-#define TBLTEXT_DESC			5120
+#define TBLTEXT_OK 5102
+#define TBLTEXT_CANCEL 5103
+#define TBLTEXT_DESC 5120
 
 namespace D2Panels
 {
@@ -18,24 +16,25 @@ namespace D2Panels
 	 */
 	TCPIPJoin::TCPIPJoin() : D2Panel()
 	{
-#if 0
 		// Create background
-		panelBackground = engine->renderer->TextureFromStitchedDC6(DC6_PANEL_BACKGROUND, "PopUpOkCancel2", 0, 1, PAL_UNITS);
+		IGraphicsReference *bgRef = engine->graphics->CreateReference(DC6_PANEL_BACKGROUND, UsagePolicy_SingleUse);
+		panelBackground = engine->renderer->AllocateObject(0);
+		panelBackground->AttachCompositeTextureResource(bgRef, 0, -1);
 
-		ipText = engine->TBL_FindStringFromIndex(TBLTEXT_DESC);
+		// IP description text
+		ipTextLabel = engine->renderer->AllocateObject(1);
+		ipTextLabel->AttachFontResource(cl.font16);
+		ipTextLabel->SetText(engine->TBL_FindStringFromIndex(TBLTEXT_DESC));
 
 		// Create widgets
-		m_okButton = new D2Widget_Button(155, 130, DC6_PANEL_BUTTON, "medium", 0, 0, 1, 1, 1, 1);
-		m_cancelButton = new D2Widget_Button(15, 130, DC6_PANEL_BUTTON, "medium", 0, 0, 1, 1, 1, 1);
-		m_ipEntry = new D2Widget_TextEntry(25, 70, true, true, false, true);
+		m_okButton = new D2Widgets::Button(155, 130, DC6_PANEL_BUTTON, "medium", 0, 0, 1, 1, 0, 0);
+		m_cancelButton = new D2Widgets::Button(15, 130, DC6_PANEL_BUTTON, "medium", 0, 0, 1, 1, 0, 0);
+		m_ipEntry = new D2Widgets::TextEntry(25, 70, true, true, false, true);
 
 		m_okButton->AttachText(engine->TBL_FindStringFromIndex(TBLTEXT_OK));
 		m_cancelButton->AttachText(engine->TBL_FindStringFromIndex(TBLTEXT_CANCEL));
 		m_okButton->SetFont(cl.fontRidiculous);
 		m_cancelButton->SetFont(cl.fontRidiculous);
-
-		m_okButton->AttachClickSignal(JoinGamePanelSignal);
-		m_cancelButton->AttachClickSignal(JoinGamePanelSignal);
 
 		AddWidget(m_okButton);
 		AddWidget(m_cancelButton);
@@ -43,7 +42,11 @@ namespace D2Panels
 
 		m_okButton->AttachIdentifier("b_join");
 		m_cancelButton->AttachIdentifier("b_cancel");
-#endif
+
+		m_cancelButton->AddEventListener(Clicked, []
+										 {
+			D2Menus::TCPIP* tcpip = dynamic_cast<D2Menus::TCPIP*>(cl.pActiveMenu);
+			if (tcpip) { tcpip->ShowJoinSubmenu(false); } });
 	}
 
 	/*
@@ -52,9 +55,11 @@ namespace D2Panels
 	 */
 	TCPIPJoin::~TCPIPJoin()
 	{
-#if 0
-		engine->renderer->DeregisterTexture("PopUpOkCancel2", panelBackground);
-#endif
+		engine->renderer->Remove(panelBackground);
+		engine->renderer->Remove(ipTextLabel);
+		delete m_okButton;
+		delete m_cancelButton;
+		delete m_ipEntry;
 	}
 
 	/*
@@ -63,25 +68,20 @@ namespace D2Panels
 	 */
 	void TCPIPJoin::Draw()
 	{
-#if 0
-		// Draw the background
-		DWORD dwWidth = 0, dwHeight = 0;
-		engine->renderer->PollTexture(panelBackground, &dwWidth, &dwHeight);
-		engine->renderer->DrawTexture(panelBackground, x, y, dwWidth, dwHeight, 0, 0);
+		panelBackground->SetDrawCoords(x, y, -1, -1);
+		panelBackground->Draw();
 
-		// Draw the text
-		engine->renderer->DrawText(cl.font16, ipText, x + 45, y + 25, 175, 40, ALIGN_CENTER, ALIGN_TOP);
+		ipTextLabel->SetDrawCoords(x + 45, y + 25, 175, 40);
+		ipTextLabel->Draw();
 
-		// Draw the widgets
 		DrawAllWidgets();
-#endif
 	}
 
 	/*
 	 *	Get the IP that we typed in
 	 *	@author	eezstreet
 	 */
-	char16_t* TCPIPJoin::GetEnteredIP()
+	char16_t *TCPIPJoin::GetEnteredIP()
 	{
 		return m_ipEntry->GetText();
 	}

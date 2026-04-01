@@ -1,6 +1,6 @@
 #include "D2Common.hpp"
 
-typedef void(*BitwiseFunction)(DWORD* pIn, DWORD pOperand);
+typedef void (*BitwiseFunction)(DWORD *pIn, DWORD pOperand);
 
 /*
  *	Math function tables
@@ -8,31 +8,31 @@ typedef void(*BitwiseFunction)(DWORD* pIn, DWORD pOperand);
  */
 
 // OR
-static void Math_Or(DWORD* pIn, DWORD pOperand)
+static void Math_Or(DWORD *pIn, DWORD pOperand)
 {
 	*pIn |= pOperand;
 }
 
 // AND
-static void Math_And(DWORD* pIn, DWORD pOperand)
+static void Math_And(DWORD *pIn, DWORD pOperand)
 {
 	*pIn &= pOperand;
 }
 
 // XOR
-static void Math_Xor(DWORD* pIn, DWORD pOperand)
+static void Math_Xor(DWORD *pIn, DWORD pOperand)
 {
 	*pIn ^= pOperand;
 }
 
 // MOV
-static void Math_Mov(DWORD* pIn, DWORD pOperand)
+static void Math_Mov(DWORD *pIn, DWORD pOperand)
 {
 	*pIn = pOperand;
 }
 
 // MOVZ
-static void Math_Movz(DWORD* pIn, DWORD pOperand)
+static void Math_Movz(DWORD *pIn, DWORD pOperand)
 {
 	if (*pIn == 0)
 	{
@@ -41,26 +41,26 @@ static void Math_Movz(DWORD* pIn, DWORD pOperand)
 }
 
 // ANDNOT
-static void Math_AndNot(DWORD* pIn, DWORD pOperand)
+static void Math_AndNot(DWORD *pIn, DWORD pOperand)
 {
 	*pIn &= ~pOperand;
 }
 
 static BitwiseFunction MathFunctions[] =
-{
-	Math_Or,
-	Math_And,
-	Math_Xor,
-	Math_Mov,
-	Math_Movz,
-	Math_AndNot,
+	{
+		Math_Or,
+		Math_And,
+		Math_Xor,
+		Math_Mov,
+		Math_Movz,
+		Math_AndNot,
 };
 
 /*
  *	Performs the specified math function on a variable.
  *	@author	eezstreet
  */
-void Math_Perform(D2MathFunc func, DWORD* pIn, DWORD pOperand)
+void Math_Perform(D2MathFunc func, DWORD *pIn, DWORD pOperand)
 {
 	MathFunctions[func](pIn, pOperand);
 }
@@ -68,7 +68,7 @@ void Math_Perform(D2MathFunc func, DWORD* pIn, DWORD pOperand)
 /**
  *	Gets the next number in the seed sequence.
  */
-uint16_t Seed_Next(uint16_t& seed)
+uint16_t Seed_Next(uint16_t &seed)
 {
 	seed ^= seed << 7;
 	seed ^= seed >> 9;
@@ -76,7 +76,7 @@ uint16_t Seed_Next(uint16_t& seed)
 	return seed;
 }
 
-uint32_t Seed_Next(uint32_t& seed)
+uint32_t Seed_Next(uint32_t &seed)
 {
 	seed ^= seed << 13;
 	seed ^= seed >> 17;
@@ -84,7 +84,7 @@ uint32_t Seed_Next(uint32_t& seed)
 	return seed;
 }
 
-uint64_t Seed_Next(uint64_t& seed)
+uint64_t Seed_Next(uint64_t &seed)
 {
 	seed ^= seed << 13;
 	seed ^= seed >> 7;
@@ -92,8 +92,8 @@ uint64_t Seed_Next(uint64_t& seed)
 	return seed;
 }
 
-template<typename T>
-int Seed_RangeTemplated(T& seed, int min, int max)
+template <typename T>
+int Seed_RangeTemplated(T &seed, int min, int max)
 {
 	uint16_t seeded = Seed_Next(seed);
 	int range = max - min;
@@ -112,22 +112,25 @@ int Seed_RangeTemplated(T& seed, int min, int max)
 	return randomNum;
 }
 
-int Seed_Range(uint16_t& seed, int min, int max)
+int Seed_Range(uint16_t &seed, int min, int max)
 {
 	return Seed_RangeTemplated(seed, min, max);
 }
 
-int Seed_Range(uint32_t& seed, int min, int max)
+int Seed_Range(uint32_t &seed, int min, int max)
 {
 	return Seed_RangeTemplated(seed, min, max);
 }
 
-int Seed_Range(uint64_t& seed, int min, int max)
+int Seed_Range(uint64_t &seed, int min, int max)
 {
 	return Seed_RangeTemplated(seed, min, max);
 }
 
-int Seed_Range(int& seed, int min, int max)
+int Seed_Range(int &seed, int min, int max)
 {
-	return Seed_Range((uint64_t&)seed, min, max);
+	uint64_t wideSeed = static_cast<uint64_t>(static_cast<unsigned int>(seed));
+	int result = Seed_RangeTemplated(wideSeed, min, max);
+	seed = static_cast<int>(wideSeed);
+	return result;
 }

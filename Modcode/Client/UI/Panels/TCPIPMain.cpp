@@ -1,14 +1,16 @@
 #include "TCPIPMain.hpp"
 #include "../Menus/TCPIP.hpp"
 #include "../Menus/OtherMultiplayer.hpp"
+#include "../Menus/CharSelect.hpp"
+#include "../Menus/CharCreate.hpp"
 #include "../Widgets/Button.hpp"
 
-#define MAIN_BUTTON_DC6			"data\\global\\ui\\FrontEnd\\3WideButtonBlank.dc6"
-#define SMALL_BUTTON_DC6		"data\\global\\ui\\FrontEnd\\MediumButtonBlank.dc6"
+#define MAIN_BUTTON_DC6 "data\\global\\ui\\FrontEnd\\3WideButtonBlank.dc6"
+#define SMALL_BUTTON_DC6 "data\\global\\ui\\FrontEnd\\MediumButtonBlank.dc6"
 
-#define TBLTEXT_HOSTGAME		5118
-#define TBLTEXT_JOINGAME		5119
-#define TBLTEXT_CANCEL			3402
+#define TBLTEXT_HOSTGAME 5118
+#define TBLTEXT_JOINGAME 5119
+#define TBLTEXT_CANCEL 3402
 
 namespace D2Panels
 {
@@ -29,6 +31,33 @@ namespace D2Panels
 		AddWidget(m_hostGameButton);
 		AddWidget(m_joinGameButton);
 		AddWidget(m_cancelButton);
+
+		m_joinGameButton->AddEventListener(Clicked, []
+										   {
+			D2Menus::TCPIP* tcpip = dynamic_cast<D2Menus::TCPIP*>(cl.pActiveMenu);
+			if (tcpip) { tcpip->ShowJoinSubmenu(true); } });
+
+		m_hostGameButton->AddEventListener(Clicked, []
+										   {
+			cl.charSelectContext = CSC_TCPIP;
+			engine->NET_SetPlayerCount(8);
+			int nNumFiles = 0;
+			char** szFileList = engine->FS_ListFilesInDirectory("Save", "*.d2s", &nNumFiles);
+			delete cl.pActiveMenu;
+			if (nNumFiles <= 0)
+			{
+				cl.pActiveMenu = new D2Menus::CharCreate();
+			}
+			else
+			{
+				cl.pActiveMenu = new D2Menus::CharSelect(szFileList, nNumFiles);
+				engine->FS_FreeFileList(szFileList, nNumFiles);
+			} });
+
+		m_cancelButton->AddEventListener(Clicked, []
+										 {
+			delete cl.pActiveMenu;
+			cl.pActiveMenu = new D2Menus::OtherMultiplayer(); });
 	}
 
 	/*
@@ -48,13 +77,7 @@ namespace D2Panels
 	 */
 	void TCPIPMain::Draw()
 	{
-#if 0
-		// Draw the big title at the top of the screen
-		engine->renderer->DrawText(cl.font42, engine->TBL_FindStringFromIndex(5117), 0, 70, 800, 50, ALIGN_CENTER, ALIGN_TOP);
-
-		// Draw all of the widgets
 		DrawAllWidgets();
-#endif
 	}
 
 	/*

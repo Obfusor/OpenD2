@@ -3,7 +3,7 @@
 #include "D2Widget.hpp"
 #include "D2UI.hpp"
 
-#define SMALL_BUTTON_DC6		 "data\\global\\ui\\FrontEnd\\MediumButtonBlank.dc6"
+#define SMALL_BUTTON_DC6 "data\\global\\ui\\FrontEnd\\MediumButtonBlank.dc6"
 #define SMALL_BUTTON_FETCHAR_DC6 "data\\global\\ui\\FrontEnd\\MediumSelButtonBlank.dc6"
 
 /*
@@ -14,13 +14,13 @@
 class D2Panel
 {
 private:
-	D2Menu* m_pOwner;
+	D2Menu *m_pOwner;
 
-	D2Panel* m_pNextPanel;
-	D2Panel* m_pNextVisible;
+	D2Panel *m_pNextPanel;
+	D2Panel *m_pNextVisible;
 
-	D2Widget* m_widgets;
-	D2Widget* m_visibleWidgets;
+	D2Widget *m_widgets;
+	D2Widget *m_visibleWidgets;
 
 protected:
 	bool m_bVisible;
@@ -33,29 +33,31 @@ public:
 	void Hide() { m_bVisible = false; }
 
 	// Widget management
-	void AddWidget(D2Widget* pWidget, bool bShow = true);
-	void ShowWidget(D2Widget* pWidget);
-	void HideWidget(D2Widget* pWidget);
+	void AddWidget(D2Widget *pWidget, bool bShow = true);
+	void ShowWidget(D2Widget *pWidget);
+	void HideWidget(D2Widget *pWidget);
 	void ShowAllWidgets();
 	void HideAllWidgets();
 	void DrawAllWidgets();
 
-	D2Panel* GetNext() { return m_pNextPanel; }
-	D2Panel* GetNextVisible() { return m_pNextVisible; }
-	D2Menu* GetOwner() { return m_pOwner; }
+	D2Panel *GetNext() { return m_pNextPanel; }
+	D2Panel *GetNextVisible() { return m_pNextVisible; }
+	D2Menu *GetOwner() { return m_pOwner; }
 
 	// Virtual methods
 	virtual bool HandleMouseDown(DWORD dwX, DWORD dwY);
 	virtual bool HandleMouseClicked(DWORD dwX, DWORD dwY);
 	virtual bool HandleKeyUp(DWORD dwKey);
 	virtual bool HandleKeyDown(DWORD dwKey);
-	virtual bool HandleTextInput(char* szText);
-	virtual bool HandleTextEditing(char* szText, int nStart, int nLength);
+	virtual bool HandleTextInput(char *szText);
+	virtual bool HandleTextEditing(char *szText, int nStart, int nLength);
 	virtual void Draw() = 0;
 	virtual void Tick(DWORD dwDeltaMs);
 
 	int x, y;
 
+	D2Panel() : m_pOwner(nullptr), m_pNextPanel(nullptr), m_pNextVisible(nullptr),
+				m_widgets(nullptr), m_visibleWidgets(nullptr), m_bVisible(false), x(0), y(0) {}
 	virtual ~D2Panel();
 
 	friend class D2Menu;
