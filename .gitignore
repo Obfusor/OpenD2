@@ -54,3 +54,14 @@ CTestTestfile.cmake
 
 # Vim
 *.swp
+
+# IDE / editor configs
+.vscode/
+.d2workshop/
+
+# Tools - extracted data and build artifacts
+Tools/D2SaveParser/extracted/
+Tools/D2SaveParser/extracted_*.txt
+Tools/D2SaveParser/pkexplode.*
+Tools/D2SaveParser/pk_wrapper.obj
+Tools/D2SaveParser/*.log

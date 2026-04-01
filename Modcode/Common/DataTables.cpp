@@ -38,6 +38,7 @@ bool BIN_Read(char* szBinName, void** pDestinationData, size_t* pFileSize)
 
 	*pDestinationData = malloc(*pFileSize);
 	engine->FS_Read(f, *pDestinationData, *pFileSize, 1);
+	engine->FS_CloseFile(f);
 
 	//	Somewhat of a hack here, but the first field in the BIN actually seems to be a DWORD
 	//	that specifies how many records in the file.
@@ -66,8 +67,12 @@ static int DataTables_Load(const char* szDataTableName, void** pDestinationData,
 
 		if (BIN_Read(szPath, pDestinationData, &dwFileSize))
 		{	// found the BIN file
-			// we don't need to fill out the rest of the linker, it's just for .txt files
-			return dwFileSize / dwRowSize;
+			int nRecords = (int)(dwFileSize / dwRowSize);
+			size_t remainder = dwFileSize % dwRowSize;
+			engine->Print(PRIORITY_MESSAGE,
+				"DataTables: %s -> %d bytes, %d records (row=%d, remainder=%d)",
+				szDataTableName, (int)dwFileSize, nRecords, (int)dwRowSize, (int)remainder);
+			return nRecords;
 		}
 	}
 	

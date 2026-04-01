@@ -1,6 +1,7 @@
 #include "TCPIP.hpp"
 
-#define TBLTEXT_YOURIP	5121
+#define TBLTEXT_YOURIP 5121
+#define TBLTEXT_TCPIPTITLE 5117
 
 namespace D2Menus
 {
@@ -10,12 +11,71 @@ namespace D2Menus
 	 */
 	TCPIP::TCPIP() : D2Menu()
 	{
-#if 0
-		backgroundTexture =
-			engine->renderer->TextureFromStitchedDC6("data\\global\\ui\\FrontEnd\\TCPIPscreen.dc6", "tcpip", 0, 11, PAL_UNITS);
+		IGraphicsReference *flameTexLeft = engine->graphics->CreateReference(
+			"data\\global\\ui\\FrontEnd\\D2LogoFireLeft.dc6",
+			UsagePolicy_Permanent);
+		IGraphicsReference *flameTexRight = engine->graphics->CreateReference(
+			"data\\global\\ui\\FrontEnd\\D2LogoFireRight.dc6",
+			UsagePolicy_Permanent);
+		IGraphicsReference *blackTexLeft = engine->graphics->CreateReference(
+			"data\\global\\ui\\FrontEnd\\D2LogoBlackLeft.dc6",
+			UsagePolicy_Permanent);
+		IGraphicsReference *blackTexRight = engine->graphics->CreateReference(
+			"data\\global\\ui\\FrontEnd\\D2LogoBlackRight.dc6",
+			UsagePolicy_Permanent);
 
-		m_joinMenu = new D2Panel_TCPIPJoin();
-		m_mainMenu = new D2Panel_TCPIPMain();
+		background = engine->graphics->CreateReference(
+			"data\\global\\ui\\FrontEnd\\TCPIPscreen.dc6",
+			UsagePolicy_SingleUse);
+
+		backgroundObject = engine->renderer->AllocateObject(0);
+		backgroundObject->AttachCompositeTextureResource(background, 0, -1);
+		backgroundObject->SetDrawCoords(0, 0, 800, 600);
+		backgroundObject->SetPalshift(0);
+
+		flameLeft = engine->renderer->AllocateObject(0);
+		flameRight = engine->renderer->AllocateObject(0);
+		blackLeft = engine->renderer->AllocateObject(0);
+		blackRight = engine->renderer->AllocateObject(0);
+
+		flameLeft->AttachAnimationResource(flameTexLeft, true);
+		flameRight->AttachAnimationResource(flameTexRight, true);
+		blackLeft->AttachAnimationResource(blackTexLeft, true);
+		blackRight->AttachAnimationResource(blackTexRight, true);
+
+		flameLeft->SetDrawMode(3);
+		flameRight->SetDrawMode(3);
+
+		flameLeft->SetDrawCoords(400, -285, -1, -1);
+		flameRight->SetDrawCoords(400, -285, -1, -1);
+		blackLeft->SetDrawCoords(400, -285, -1, -1);
+		blackRight->SetDrawCoords(400, -285, -1, -1);
+
+		// Title text: "TCP/IP Game"
+		titleText = engine->renderer->AllocateObject(1);
+		titleText->AttachFontResource(cl.font42);
+		titleText->SetText(engine->TBL_FindStringFromIndex(TBLTEXT_TCPIPTITLE));
+		titleText->SetDrawCoords(0, 70, 800, 50);
+
+		// "Your IP Address is:" label
+		yourIPLabel = engine->renderer->AllocateObject(1);
+		yourIPLabel->AttachFontResource(cl.fontFormal12);
+		yourIPLabel->SetText(engine->TBL_FindStringFromIndex(TBLTEXT_YOURIP));
+		yourIPLabel->SetDrawCoords(0, 110, 800, 15);
+
+		// Actual IP address
+		yourIPValue = engine->renderer->AllocateObject(1);
+		yourIPValue->AttachFontResource(cl.fontFormal12);
+		yourIPValue->SetText(engine->NET_GetLocalIP());
+		yourIPValue->SetDrawCoords(0, 130, 800, 15);
+
+		versionText = engine->renderer->AllocateObject(1);
+		versionText->AttachFontResource(cl.font16);
+		versionText->SetText(GAME_FULL_UTF16);
+		versionText->SetDrawCoords(20, 560, 0, 0);
+
+		m_joinMenu = new D2Panels::TCPIPJoin();
+		m_mainMenu = new D2Panels::TCPIPMain();
 
 		m_joinMenu->x = 265;
 		m_joinMenu->y = 160;
@@ -24,10 +84,6 @@ namespace D2Menus
 		AddPanel(m_joinMenu);
 
 		HidePanel(m_joinMenu);
-
-		m_yourIPString = engine->TBL_FindStringFromIndex(TBLTEXT_YOURIP);
-		m_yourIP = engine->NET_GetLocalIP();
-#endif
 	}
 
 	/*
@@ -36,6 +92,15 @@ namespace D2Menus
 	 */
 	TCPIP::~TCPIP()
 	{
+		engine->renderer->Remove(backgroundObject);
+		engine->renderer->Remove(flameLeft);
+		engine->renderer->Remove(flameRight);
+		engine->renderer->Remove(blackLeft);
+		engine->renderer->Remove(blackRight);
+		engine->renderer->Remove(versionText);
+		engine->renderer->Remove(titleText);
+		engine->renderer->Remove(yourIPLabel);
+		engine->renderer->Remove(yourIPValue);
 		delete m_joinMenu;
 		delete m_mainMenu;
 	}
@@ -46,19 +111,18 @@ namespace D2Menus
 	 */
 	void TCPIP::Draw()
 	{
-#if 0
-		// Draw the background
-		engine->renderer->DrawTexture(backgroundTexture, 0, 0, 800, 600, 0, 0);
+		backgroundObject->Draw();
+		blackLeft->Draw();
+		blackRight->Draw();
+		flameLeft->Draw();
+		flameRight->Draw();
 
-		// Draw the "Your IP Address is:" string
-		engine->renderer->DrawText(cl.fontFormal12, m_yourIPString, 0, 110, 800, 15, ALIGN_CENTER, ALIGN_TOP);
+		titleText->Draw();
+		yourIPLabel->Draw();
+		yourIPValue->Draw();
+		versionText->Draw();
 
-		// Draw the IP string
-		engine->renderer->DrawText(cl.fontFormal12, m_yourIP, 0, 130, 800, 15, ALIGN_CENTER, ALIGN_TOP);
-
-		// Draw the panel
 		DrawAllPanels();
-#endif
 	}
 
 	/*

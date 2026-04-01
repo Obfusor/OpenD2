@@ -8,13 +8,21 @@ namespace D2Menus
 	class TCPIP : public D2Menu
 	{
 	private:
-		tex_handle backgroundTexture;
+		IRenderObject *backgroundObject;
+		IRenderObject *flameLeft;
+		IRenderObject *flameRight;
+		IRenderObject *blackLeft;
+		IRenderObject *blackRight;
+		IRenderObject *versionText;
+		IRenderObject *yourIPLabel;
+		IRenderObject *yourIPValue;
+		IRenderObject *titleText;
 
-		char16_t* m_yourIPString;
-		char16_t* m_yourIP;
+		IGraphicsReference *background;
 
-		D2Panels::TCPIPJoin* m_joinMenu;
-		D2Panels::TCPIPMain* m_mainMenu;
+		D2Panels::TCPIPJoin *m_joinMenu;
+		D2Panels::TCPIPMain *m_mainMenu;
+
 	public:
 		TCPIP();
 		virtual ~TCPIP();

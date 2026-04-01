@@ -16,11 +16,11 @@ struct D2RosterEntry;
  */
 struct D2ViewState
 {
-	int nCenterX;         // Viewport center X in world coords
-	int nCenterY;         // Viewport center Y in world coords
-	int nOffsetX;         // Pixel offset X for smooth scrolling
-	int nOffsetY;         // Pixel offset Y for smooth scrolling
-	bool bPerspective;    // Perspective mode enabled
+    int nCenterX;      // Viewport center X in world coords
+    int nCenterY;      // Viewport center Y in world coords
+    int nOffsetX;      // Pixel offset X for smooth scrolling
+    int nOffsetY;      // Pixel offset Y for smooth scrolling
+    bool bPerspective; // Perspective mode enabled
 };
 
 /*
@@ -29,15 +29,15 @@ struct D2ViewState
  */
 struct D2RosterEntry
 {
-	DWORD           dwUnitId;
-	char            szName[16];
-	BYTE            nCharClass;
-	WORD            wLevel;
-	WORD            wPartyId;
-	WORD            wX;          // Last known position
-	WORD            wY;
-	DWORD           dwArea;      // Current area ID
-	D2RosterEntry*  pNext;
+    DWORD dwUnitId;
+    char szName[16];
+    BYTE nCharClass;
+    WORD wLevel;
+    WORD wPartyId;
+    WORD wX; // Last known position
+    WORD wY;
+    DWORD dwArea; // Current area ID
+    D2RosterEntry *pNext;
 };
 
 /*
@@ -47,59 +47,59 @@ struct D2RosterEntry
 class D2ClientGame
 {
 private:
-	D2UnitList   m_units;
-	D2ViewState  m_view;
+    D2UnitList m_units;
+    D2ViewState m_view;
 
-	// Player state
-	DWORD        m_dwLocalPlayerId;
-	BYTE         m_nCurrentAct;
-	WORD         m_wCurrentArea;
-	DWORD        m_dwMapSeed;
-	bool         m_bExpansion;
-	BYTE         m_nDifficulty;
-	DWORD        m_dwGameFlags;
+    // Player state
+    DWORD m_dwLocalPlayerId;
+    BYTE m_nCurrentAct;
+    WORD m_wCurrentArea;
+    DWORD m_dwMapSeed;
+    bool m_bExpansion;
+    BYTE m_nDifficulty;
+    DWORD m_dwGameFlags;
 
-	// Party roster
-	D2RosterEntry* m_pRoster;
+    // Party roster
+    D2RosterEntry *m_pRoster;
 
 public:
-	D2ClientGame();
-	~D2ClientGame();
+    D2ClientGame();
+    ~D2ClientGame();
 
-	// Initialization
-	void Initialize(DWORD dwPlayerId, BYTE nAct, WORD wArea, DWORD dwMapSeed,
-	                bool bExpansion, BYTE nDifficulty);
-	void Shutdown();
+    // Initialization
+    void Initialize(DWORD dwPlayerId, BYTE nAct, WORD wArea, DWORD dwMapSeed,
+                    bool bExpansion, BYTE nDifficulty);
+    void Shutdown();
 
-	// Unit management
-	D2UnitList& GetUnits() { return m_units; }
-	D2UnitStrc* GetLocalPlayer();
-	D2UnitStrc* AddPlayer(DWORD dwUnitId, BYTE nCharClass, const char* szName, WORD wX, WORD wY);
-	D2UnitStrc* AddNPC(DWORD dwUnitId, WORD wClassId, WORD wX, WORD wY, BYTE nLife);
-	void RemoveUnit(D2UnitType nType, DWORD dwUnitId);
+    // Unit management
+    D2UnitList &GetUnits() { return m_units; }
+    D2UnitStrc *GetLocalPlayer();
+    D2UnitStrc *AddPlayer(DWORD dwUnitId, BYTE nCharClass, const char *szName, WORD wX, WORD wY);
+    D2UnitStrc *AddNPC(DWORD dwUnitId, WORD wClassId, WORD wX, WORD wY, BYTE nLife);
+    void RemoveUnit(D2UnitType nType, DWORD dwUnitId);
 
-	// View management (from Ghidra: GetViewportCenterDeltaX, GetPlayerYOffset, etc.)
-	void UpdateView();
-	const D2ViewState& GetView() const { return m_view; }
+    // View management (from Ghidra: GetViewportCenterDeltaX, GetPlayerYOffset, etc.)
+    void UpdateView();
+    const D2ViewState &GetView() const { return m_view; }
 
-	// Roster management
-	void AddRosterEntry(DWORD dwUnitId, BYTE nCharClass, const char* szName,
-	                    WORD wLevel, WORD wPartyId);
-	void RemoveRosterEntry(DWORD dwUnitId);
-	void UpdateRosterPosition(DWORD dwUnitId, WORD wX, WORD wY);
-	D2RosterEntry* GetRoster() { return m_pRoster; }
+    // Roster management
+    void AddRosterEntry(DWORD dwUnitId, BYTE nCharClass, const char *szName,
+                        WORD wLevel, WORD wPartyId);
+    void RemoveRosterEntry(DWORD dwUnitId);
+    void UpdateRosterPosition(DWORD dwUnitId, WORD wX, WORD wY);
+    D2RosterEntry *GetRoster() { return m_pRoster; }
 
-	// Game state accessors
-	BYTE GetCurrentAct() const { return m_nCurrentAct; }
-	WORD GetCurrentArea() const { return m_wCurrentArea; }
-	DWORD GetGameFlags() const { return m_dwGameFlags; }
-	void SetGameFlags(DWORD dwFlags) { m_dwGameFlags = dwFlags; }
-	bool IsExpansion() const { return m_bExpansion; }
-	BYTE GetDifficulty() const { return m_nDifficulty; }
+    // Game state accessors
+    BYTE GetCurrentAct() const { return m_nCurrentAct; }
+    WORD GetCurrentArea() const { return m_wCurrentArea; }
+    DWORD GetGameFlags() const { return m_dwGameFlags; }
+    void SetGameFlags(DWORD dwFlags) { m_dwGameFlags = dwFlags; }
+    bool IsExpansion() const { return m_bExpansion; }
+    BYTE GetDifficulty() const { return m_nDifficulty; }
 
-	// Frame update
-	void Tick(DWORD dwDeltaMs);
+    // Frame update
+    void Tick(DWORD dwDeltaMs);
 };
 
 // Global game instance (nullptr when not in-game)
-extern D2ClientGame* gpGame;
+extern D2ClientGame *gpGame;

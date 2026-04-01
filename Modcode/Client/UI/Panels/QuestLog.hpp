@@ -8,9 +8,9 @@
 class QuestLog : public D2Panel
 {
 public:
-	QuestLog();
-	~QuestLog();
+    QuestLog();
+    ~QuestLog();
 
-	void Draw() override;
-	void Tick(DWORD dwDeltaMs) override;
+    void Draw() override;
+    void Tick(DWORD dwDeltaMs) override;
 };

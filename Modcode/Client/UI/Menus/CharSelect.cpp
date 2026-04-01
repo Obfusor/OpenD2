@@ -1,4 +1,5 @@
 #include "CharSelect.hpp"
+#include "Loading.hpp"
 
 static char* gszTokenNames[D2CLASS_MAX] = {
 	"AM", "SO", "NE", "PA", "BA", "DZ", "AI",
@@ -113,8 +114,15 @@ namespace D2Menus
 	 */
 	bool CharSelect::CharacterChosen()
 	{
-		// in the future we will want to bring up a popup that states that the hardcore character is dead and cannot be played.
-		// however for now, just assume everything is OK
+		// Assign the selected save data to the client state
+		m_charSelectPanel->AssignSelectedSave();
+
+		// Set up the loading transition — the caller is responsible for
+		// cleaning up cl.pActiveMenu after this returns.
+		bJoiningGame = true;
+		cl.pLoadingMenu = new D2Menus::Loading();
+		cl.gamestate = GS_LOADING;
+		cl.nLoadState = 0;
 
 		return true;
 	}

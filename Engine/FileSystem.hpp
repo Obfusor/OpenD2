@@ -18,4 +18,6 @@ namespace FS
 	char** ListFilesInDirectory(char* szDirectory, char* szExtensionFilter, int *nFiles);
 	void FreeFileList(char** pszFileList, int nNumFiles);
 	void CreateSubdirectory(char* szSubdirectory);
+	const char* GetBasePath();
+	const char* GetModPath();
 };

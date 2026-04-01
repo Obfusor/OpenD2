@@ -1,8 +1,14 @@
 #include "D2Server.hpp"
 
-D2ModuleImportStrc* engine = nullptr;
-D2GameConfigStrc* config = nullptr;
-OpenD2ConfigStrc* openConfig = nullptr;
+D2ModuleImportStrc *engine = nullptr;
+D2GameConfigStrc *config = nullptr;
+OpenD2ConfigStrc *openConfig = nullptr;
+
+// Minimal server state
+static struct
+{
+	bool bKillServer;
+} sv;
 
 /*
  *	Called every frame on the server.
@@ -10,17 +16,17 @@ OpenD2ConfigStrc* openConfig = nullptr;
  */
 static void D2Server_RunFrame()
 {
-
 }
 
 /*
  *	Called when initializing the server for the first time.
  *	@author	eezstreet
  */
-static void D2Server_InitializeServer(D2GameConfigStrc* pConfig, OpenD2ConfigStrc* pOpenConfig)
+static void D2Server_InitializeServer(D2GameConfigStrc *pConfig, OpenD2ConfigStrc *pOpenConfig)
 {
 	config = pConfig;
 	openConfig = pOpenConfig;
+	sv.bKillServer = false;
 
 	D2Common_Init(engine, pConfig, pOpenConfig);
 }
@@ -35,7 +41,7 @@ static void D2Server_Shutdown()
 /*
  *	This gets called every frame. We return the next module to run after this one.
  */
-static OpenD2Modules D2Server_RunModuleFrame(D2GameConfigStrc* pConfig, OpenD2ConfigStrc* pOpenConfig)
+static OpenD2Modules D2Server_RunModuleFrame(D2GameConfigStrc *pConfig, OpenD2ConfigStrc *pOpenConfig)
 {
 	if (config == nullptr && openConfig == nullptr && pConfig != nullptr && pOpenConfig != nullptr)
 	{
@@ -45,15 +51,10 @@ static OpenD2Modules D2Server_RunModuleFrame(D2GameConfigStrc* pConfig, OpenD2Co
 
 	D2Server_RunFrame();
 
-	/*if (sv.bKillServer)
+	if (sv.bKillServer)
 	{
 		return MODULE_NONE;
 	}
-
-	if (sv.bDedicatedServer)
-	{	// If we're running a dedicated server, we should only be running the server stuff.
-		return MODULE_SERVER;
-	}*/
 
 	return MODULE_CLIENT;
 }
@@ -62,10 +63,10 @@ static OpenD2Modules D2Server_RunModuleFrame(D2GameConfigStrc* pConfig, OpenD2Co
  *	GetModuleAPI allows us to exchange a series of function pointers with the engine.
  *	This is effectively the entry point for the library.
  */
-static D2ModuleExportStrc gExports{ 0 };
+static D2ModuleExportStrc gExports{0};
 extern "C"
 {
-	D2EXPORT D2ModuleExportStrc* GetModuleAPI(D2ModuleImportStrc* pImports)
+	D2EXPORT D2ModuleExportStrc *GetModuleAPI(D2ModuleImportStrc *pImports)
 	{
 		if (pImports == nullptr)
 		{

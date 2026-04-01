@@ -9,6 +9,16 @@ namespace D2Menus
 	LoadError::LoadError(WORD wStringIndex) : D2Menu()
 	{
 		szErrorText = engine->TBL_FindStringFromIndex(wStringIndex);
+
+		errorTextObject = engine->renderer->AllocateObject(1);
+		errorTextObject->AttachFontResource(cl.font16);
+		errorTextObject->SetText(szErrorText);
+		errorTextObject->SetDrawCoords(20, 200, 780, 20);
+	}
+
+	LoadError::~LoadError()
+	{
+		engine->renderer->Remove(errorTextObject);
 	}
 
 	/*
@@ -17,11 +27,7 @@ namespace D2Menus
 	 */
 	void LoadError::Draw()
 	{
-#if 0
-		engine->renderer->Clear();
-		engine->renderer->ColorModFont(cl.font16, 255, 255, 255);
-		engine->renderer->DrawText(cl.font16, szErrorText, 20, 200, 780, 20, ALIGN_CENTER, ALIGN_TOP);
-#endif
+		errorTextObject->Draw();
 	}
 
 	/*

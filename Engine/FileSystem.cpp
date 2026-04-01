@@ -644,4 +644,20 @@ namespace FS
 			}
 		}
 	}
+
+	/*
+	 *	Returns the base path (where vanilla game files live)
+	 */
+	const char* GetBasePath()
+	{
+		return gszBasePath;
+	}
+
+	/*
+	 *	Returns the mod path (where mod files override base files)
+	 */
+	const char* GetModPath()
+	{
+		return gszModPath;
+	}
 }

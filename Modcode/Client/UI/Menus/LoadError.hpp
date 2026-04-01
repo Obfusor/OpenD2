@@ -8,9 +8,12 @@ namespace D2Menus
 	class LoadError : public D2Menu
 	{
 	private:
-		char16_t* szErrorText;
+		char16_t *szErrorText;
+		IRenderObject *errorTextObject;
+
 	public:
 		LoadError(WORD wStringIndex);
+		virtual ~LoadError();
 
 		virtual void Draw();
 		virtual bool HandleMouseClicked(DWORD dwX, DWORD dwY);

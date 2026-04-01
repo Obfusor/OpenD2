@@ -4,15 +4,15 @@
 #include "../Menus/Loading.hpp"
 #include "../Menus/CharCreate.hpp"
 
-#define TBLTEXT_EXIT			5101	// "Exit"
-#define TBLTEXT_OK				5102	// "OK"
-#define TBLTEXT_CANCEL			5103	// "Cancel"
-#define TBLTEXT_YES				5166	// "YES"
-#define TBLTEXT_NO				5167	// "NO"
-#define TBLTEXT_CONVERTCHAR		22742	// "CONVERT TO EXPANSION"
-#define TBLTEXT_CREATECHAR		22743	// "CREATE NEW CHARACTER"
-#define TBLTEXT_DELETECHAR		22744	// "DELETE CHARACTER"
-//#define TBLTEXT_EXPANSIONCHAR	22731	// "EXPANSION CHARACTER"
+#define TBLTEXT_EXIT 5101		  // "Exit"
+#define TBLTEXT_OK 5102			  // "OK"
+#define TBLTEXT_CANCEL 5103		  // "Cancel"
+#define TBLTEXT_YES 5166		  // "YES"
+#define TBLTEXT_NO 5167			  // "NO"
+#define TBLTEXT_CONVERTCHAR 22742 // "CONVERT TO EXPANSION"
+#define TBLTEXT_CREATECHAR 22743  // "CREATE NEW CHARACTER"
+#define TBLTEXT_DELETECHAR 22744  // "DELETE CHARACTER"
+// #define TBLTEXT_EXPANSIONCHAR	22731	// "EXPANSION CHARACTER"
 
 namespace D2Panels
 {
@@ -32,23 +32,44 @@ namespace D2Panels
 		exitButton = new D2Widgets::Button(34, 538, SMALL_BUTTON_DC6, "medium", 0, 0, 1, 1, 0, 0);
 		charSelectList = new D2Widgets::CharSelectList(37, 86, 548, 370, characterDisplayName);
 
-		//AddWidget(createCharButton);
-		//AddWidget(deleteCharButton);
-		//AddWidget(convertExpansionButton);
+		AddWidget(createCharButton);
+		AddWidget(deleteCharButton);
+		AddWidget(convertExpansionButton);
 		AddWidget(okButton);
 		AddWidget(exitButton);
 		AddWidget(charSelectList);
 
-		//createCharButton->AttachText(engine->TBL_FindStringFromIndex(TBLTEXT_CREATECHAR));
-		//deleteCharButton->AttachText(engine->TBL_FindStringFromIndex(TBLTEXT_DELETECHAR));
-		//convertExpansionButton->AttachText(engine->TBL_FindStringFromIndex(TBLTEXT_CONVERTCHAR));
+		createCharButton->AttachText(engine->TBL_FindStringFromIndex(TBLTEXT_CREATECHAR));
+		deleteCharButton->AttachText(engine->TBL_FindStringFromIndex(TBLTEXT_DELETECHAR));
+		convertExpansionButton->AttachText(engine->TBL_FindStringFromIndex(TBLTEXT_CONVERTCHAR));
 		okButton->AttachText(engine->TBL_FindStringFromIndex(TBLTEXT_OK));
 		exitButton->AttachText(engine->TBL_FindStringFromIndex(TBLTEXT_EXIT));
 
-		exitButton->AddEventListener(Clicked, [] {
+		createCharButton->AddEventListener(Clicked, []
+										   {
 			delete cl.pActiveMenu;
-			cl.pActiveMenu = new D2Menus::Main();
-			});
+			cl.pActiveMenu = new D2Menus::CharCreate(); });
+
+		exitButton->AddEventListener(Clicked, []
+									 {
+			delete cl.pActiveMenu;
+			cl.pActiveMenu = new D2Menus::Main(); });
+
+		okButton->AddEventListener(Clicked, []
+								   {
+			D2Menus::CharSelect* menu = dynamic_cast<D2Menus::CharSelect*>(cl.pActiveMenu);
+			if (menu != nullptr)
+			{
+				menu->CharacterChosen();
+			} });
+
+		deleteCharButton->AddEventListener(Clicked, []
+										   {
+			D2Menus::CharSelect* menu = dynamic_cast<D2Menus::CharSelect*>(cl.pActiveMenu);
+			if (menu != nullptr)
+			{
+				menu->AskForDeletionConfirmation();
+			} });
 
 		characterDisplayName->AttachFontResource(cl.font42);
 	}
@@ -80,7 +101,7 @@ namespace D2Panels
 	/*
 	 *	We just received a save from the owning menu. Add it to the CharSelectList.
 	 */
-	void CharSelect::LoadSave(D2SaveHeader& save, char* path)
+	void CharSelect::LoadSave(D2SaveHeader &save, char *path)
 	{
 		if (charSelectList != nullptr)
 		{
@@ -155,7 +176,7 @@ namespace D2Panels
 
 		renderObject = engine->renderer->AllocateObject(0);
 
-		IGraphicsReference* backgroundHandle = engine->graphics->CreateReference("data\\global\\ui\\FrontEnd\\PopUpOkCancel2.dc6", UsagePolicy_SingleUse);
+		IGraphicsReference *backgroundHandle = engine->graphics->CreateReference("data\\global\\ui\\FrontEnd\\PopUpOkCancel2.dc6", UsagePolicy_SingleUse);
 		renderObject->AttachCompositeTextureResource(backgroundHandle, 0, 1);
 		renderObject->SetDrawCoords(268, 212, 264, 176);
 		engine->graphics->DeleteReference(backgroundHandle);

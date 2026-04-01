@@ -14,10 +14,10 @@
 // Link with Iphlpapi.lib
 #pragma comment(lib, "IPHLPAPI.lib")
 
-#define D2REGISTRY_BETA_KEY	"SOFTWARE\\Blizzard Entertainment\\Diablo II Beta"
-#define D2REGISTRY_KEY		"SOFTWARE\\Blizzard Entertainment\\Diablo II"
+#define D2REGISTRY_BETA_KEY "SOFTWARE\\Blizzard Entertainment\\Diablo II Beta"
+#define D2REGISTRY_KEY "SOFTWARE\\Blizzard Entertainment\\Diablo II"
 
-#define REGISTRY_KEY_SIZE	2048
+#define REGISTRY_KEY_SIZE 2048
 
 //////////////////////////////////////////////////////////////
 //
@@ -26,14 +26,14 @@
 struct D2ModuleInternal
 {
 	HMODULE dwModule;
-	D2ModuleExportStrc* pExports;
+	D2ModuleExportStrc *pExports;
 };
 
 //////////////////////////////////////////////////////////////
 //
 //	Global variables
 
-static D2ModuleInternal gModules[MODULE_MAX]{ 0 };
+static D2ModuleInternal gModules[MODULE_MAX]{0};
 
 //////////////////////////////////////////////////////////////
 //
@@ -43,10 +43,10 @@ namespace Sys
 {
 
 	/*
-	*	Copy registry keys (and delete them) from the Diablo II beta to the retail game.
-	*	This step is done before anything else.
-	*	Never really gets used anymore, but since we're in the business of replicating base game behavior...
-	*/
+	 *	Copy registry keys (and delete them) from the Diablo II beta to the retail game.
+	 *	This step is done before anything else.
+	 *	Never really gets used anymore, but since we're in the business of replicating base game behavior...
+	 */
 	void CopyBetaRegistryKeys()
 	{
 		HKEY betakey;
@@ -56,11 +56,11 @@ namespace Sys
 		BYTE data;
 		DWORD cbdata = 0;
 		LSTATUS status;
-		char keybuffer[REGISTRY_KEY_SIZE]{ 0 };
+		char keybuffer[REGISTRY_KEY_SIZE]{0};
 		DWORD keybufferSize = REGISTRY_KEY_SIZE;
 
 		if (!RegOpenKeyA(HKEY_LOCAL_MACHINE, D2REGISTRY_BETA_KEY, &betakey))
-		{	// We had the Diablo II beta installed. Copy the keys and delete the old ones.
+		{ // We had the Diablo II beta installed. Copy the keys and delete the old ones.
 			RegCreateKeyA(HKEY_LOCAL_MACHINE, D2REGISTRY_KEY, &key);
 
 			i = 0;
@@ -76,21 +76,20 @@ namespace Sys
 	}
 
 	/*
-	*	Copy registry keys from the retail game and make them available in D2.ini
-	*	This step has to be done after we've initialized the file system
-	*/
+	 *	Copy registry keys from the retail game and make them available in D2.ini
+	 *	This step has to be done after we've initialized the file system
+	 */
 	void CopySettings()
 	{
-
 	}
 
 	/*
-	*	Get topmost adapter IP address
-	*/
-#define ADAPTER_LIST_SIZE	15000
-	char16_t* GetAdapterIP()
+	 *	Get topmost adapter IP address
+	 */
+#define ADAPTER_LIST_SIZE 15000
+	char16_t *GetAdapterIP()
 	{
-		IP_ADAPTER_ADDRESSES* addresses = (IP_ADAPTER_ADDRESSES*)malloc(ADAPTER_LIST_SIZE);
+		IP_ADAPTER_ADDRESSES *addresses = (IP_ADAPTER_ADDRESSES *)malloc(ADAPTER_LIST_SIZE);
 		PIP_ADAPTER_ADDRESSES currAddress;
 		DWORD dwSize = ADAPTER_LIST_SIZE;
 		static char16_t szAddress[32];
@@ -102,20 +101,20 @@ namespace Sys
 			{
 				if (currAddress->OperStatus == IfOperStatusUp && currAddress->Ipv4Enabled &&
 					currAddress->FirstUnicastAddress)
-				{	// current adapter is operational, is IPv4 enabled and has TCP (unicast) capabilities
+				{ // current adapter is operational, is IPv4 enabled and has TCP (unicast) capabilities
 					DWORD dwOffset = 0;
 					for (int i = 2; i < 6; i++)
 					{
 						size_t dwWritten = 0;
 
 						if (i != 2)
-						{	// add dots between the numbers
+						{ // add dots between the numbers
 							szAddress[dwOffset++] = u'.';
 						}
 
 						// put the number on
 						D2Lib::qnitoa((BYTE)currAddress->FirstUnicastAddress->Address.lpSockaddr->sa_data[i],
-							szAddress + dwOffset, 32 - dwOffset, 10, dwWritten);
+									  szAddress + dwOffset, 32 - dwOffset, 10, dwWritten);
 						dwOffset += dwWritten;
 					}
 					free(addresses);
@@ -131,14 +130,14 @@ namespace Sys
 	}
 
 	/*
-	*	Get default homepath
-	*/
-	void DefaultHomepath(char* szBuffer, size_t dwBufferLen)
+	 *	Get default homepath
+	 */
+	void DefaultHomepath(char *szBuffer, size_t dwBufferLen)
 	{
 		TCHAR homeDirectory[MAX_PATH];
 
 		if (!SUCCEEDED(SHGetFolderPath(NULL, CSIDL_PERSONAL, NULL, 0, homeDirectory)))
-		{	// Couldn't find it, I guess?
+		{ // Couldn't find it, I guess?
 			return;
 		}
 
@@ -146,17 +145,35 @@ namespace Sys
 	}
 
 	/*
-	*	Get current working directory
-	*/
-	void GetWorkingDirectory(char* szBuffer, size_t dwBufferLen)
+	 *	Get current working directory
+	 */
+	void GetWorkingDirectory(char *szBuffer, size_t dwBufferLen)
 	{
 		GetCurrentDirectoryA(dwBufferLen, szBuffer);
 	}
 
 	/*
-	*	Given a buffer and an amount of memory, writes to the buffer "X MB (Y GB)"
-	*/
-	static void FormatMemory(char* buffer, DWORD dwBufferLen, DWORDLONG ullMemory)
+	 *	Get the directory where the executable is located
+	 */
+	void GetExecutableDirectory(char *szBuffer, size_t dwBufferLen)
+	{
+		char szExePath[MAX_PATH];
+		GetModuleFileNameA(NULL, szExePath, MAX_PATH);
+
+		// Find the last backslash to get directory only
+		char *pLastSlash = strrchr(szExePath, '\\');
+		if (pLastSlash != NULL)
+		{
+			*pLastSlash = '\0'; // Truncate at last backslash
+		}
+
+		D2Lib::strncpyz(szBuffer, szExePath, dwBufferLen);
+	}
+
+	/*
+	 *	Given a buffer and an amount of memory, writes to the buffer "X MB (Y GB)"
+	 */
+	static void FormatMemory(char *buffer, DWORD dwBufferLen, DWORDLONG ullMemory)
 	{
 		double fMemoryKB = ullMemory / 1024.0;
 		double fMemoryMB = fMemoryKB / 1024.0;
@@ -166,10 +183,10 @@ namespace Sys
 	}
 
 	/*
-	*	Get system info from the operating system
-	*	@author	eezstreet
-	*/
-	void GetSystemInfo(D2SystemInfoStrc* pInfo)
+	 *	Get system info from the operating system
+	 *	@author	eezstreet
+	 */
+	void GetSystemInfo(D2SystemInfoStrc *pInfo)
 	{
 		DWORD dwWriteSize;
 		OSVERSIONINFO osi;
@@ -192,8 +209,8 @@ namespace Sys
 			break;
 		case VER_PLATFORM_WIN32_NT:
 			snprintf(pInfo->szOSName, dwWriteSize,
-				"Windows NT (Version %i.%i) %s",
-				osi.dwMajorVersion, osi.dwMinorVersion, osi.szCSDVersion);
+					 "Windows NT (Version %i.%i) %s",
+					 osi.dwMajorVersion, osi.dwMinorVersion, osi.szCSDVersion);
 			break;
 		case VER_PLATFORM_WIN32_WINDOWS:
 			D2Lib::strncpyz(pInfo->szOSName, osi.dwMinorVersion == 0 ? "Windows 95" : "Windows 98", dwWriteSize);
@@ -217,8 +234,8 @@ namespace Sys
 		// The best way seems to be to pull it out of the registry, so we'll go with that.
 		HKEY key = 0;
 		if (RegOpenKeyEx(HKEY_LOCAL_MACHINE,
-			"HARDWARE\\DESCRIPTION\\System\\CentralProcessor\\0",
-			0, KEY_QUERY_VALUE, &key) == 0)
+						 "HARDWARE\\DESCRIPTION\\System\\CentralProcessor\\0",
+						 0, KEY_QUERY_VALUE, &key) == 0)
 		{
 			DWORD MHz = 0;
 
@@ -245,24 +262,24 @@ namespace Sys
 	}
 
 	/*
-	*	Create directory if it doesn't already exist
-	*/
+	 *	Create directory if it doesn't already exist
+	 */
 #ifdef CreateDirectory
 #undef CreateDirectory
 #endif
-	bool CreateDirectory(char* szPath)
+	bool CreateDirectory(char *szPath)
 	{
 		return ::CreateDirectoryA(szPath, NULL);
 	}
 
 	/*
-	*	Build a list of files with an extension filter.
-	*	If the extension filter is *.*, there is essentially no filter.
-	*	@author	eezstreet
-	*/
-	void ListFilesInDirectory(char* szPath, char* szExtensionFilter, char* szOriginalPath, int* nFiles, char(*szList)[MAX_FILE_LIST_SIZE][MAX_D2PATH_ABSOLUTE])
+	 *	Build a list of files with an extension filter.
+	 *	If the extension filter is *.*, there is essentially no filter.
+	 *	@author	eezstreet
+	 */
+	void ListFilesInDirectory(char *szPath, char *szExtensionFilter, char *szOriginalPath, int *nFiles, char (*szList)[MAX_FILE_LIST_SIZE][MAX_D2PATH_ABSOLUTE])
 	{
-		char szFullPath[MAX_D2PATH_ABSOLUTE]{ 0 };
+		char szFullPath[MAX_D2PATH_ABSOLUTE]{0};
 		HANDLE hFile;
 		WIN32_FIND_DATA findData;
 
@@ -284,13 +301,13 @@ namespace Sys
 	}
 
 	/*
-	*	Gets the API of a module
-	*	Note: This doesn't validate the API version etc, we need to do this manually afterward.
-	*/
-	D2ModuleExportStrc* OpenModule(OpenD2Modules nModule, D2ModuleImportStrc* pImports)
+	 *	Gets the API of a module
+	 *	Note: This doesn't validate the API version etc, we need to do this manually afterward.
+	 */
+	D2ModuleExportStrc *OpenModule(OpenD2Modules nModule, D2ModuleImportStrc *pImports)
 	{
-		char szModulePath[MAX_D2PATH_ABSOLUTE]{ 0 };
-		bool bModuleFound = false;
+		char szModulePath[MAX_D2PATH_ABSOLUTE]{0};
+		const char* szDllName = nullptr;
 
 		if (gModules[nModule].dwModule != 0)
 		{
@@ -299,16 +316,26 @@ namespace Sys
 
 		if (nModule == MODULE_CLIENT)
 		{
-			bModuleFound = FS::Find("D2Client.dll", szModulePath, MAX_D2PATH_ABSOLUTE);
+			szDllName = "D2Client.dll";
 		}
 		else if (nModule == MODULE_SERVER)
 		{
-			bModuleFound = FS::Find("D2Server.dll", szModulePath, MAX_D2PATH_ABSOLUTE);
+			szDllName = "D2Server.dll";
 		}
-		Log_ErrorAssertReturn(bModuleFound, nullptr);
+		Log_ErrorAssertReturn(szDllName != nullptr, nullptr);
 
-		gModules[nModule].dwModule = LoadLibrary(szModulePath);
-		DWORD error = GetLastError();
+		// First try the standard Windows DLL search (exe directory, system dirs, CWD).
+		// This ensures our built DLLs are found before any original game DLLs
+		// that may exist in the FS search paths (basepath/modpath).
+		gModules[nModule].dwModule = LoadLibrary(szDllName);
+		if (gModules[nModule].dwModule == 0)
+		{
+			// Fall back to FS search paths
+			if (FS::Find((char*)szDllName, szModulePath, MAX_D2PATH_ABSOLUTE))
+			{
+				gModules[nModule].dwModule = LoadLibrary(szModulePath);
+			}
+		}
 		Log_ErrorAssertReturn(gModules[nModule].dwModule != 0, nullptr);
 
 		GetAPIType ModuleAPI;
@@ -320,8 +347,8 @@ namespace Sys
 	}
 
 	/*
-	*	Closes a single module
-	*/
+	 *	Closes a single module
+	 */
 	void CloseModule(OpenD2Modules nModule)
 	{
 		if (gModules[nModule].dwModule == 0)
@@ -335,9 +362,9 @@ namespace Sys
 }
 
 /*
-*	The main entrypoint of the program (on Windows)
-*/
-int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, char* szCmdLine, int nShowCmd)
+ *	The main entrypoint of the program (on Windows)
+ */
+int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, char *szCmdLine, int nShowCmd)
 {
 	// TODO: copy fields from registry and put them in D2.ini, which we also need to load and parse..
 	Sys::CopyBetaRegistryKeys();

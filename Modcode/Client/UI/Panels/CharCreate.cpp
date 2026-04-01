@@ -4,8 +4,8 @@
 #include "../Menus/CharCreate.hpp"
 #include "../Menus/CharSelect.hpp"
 
-#define TBLTEXT_EXIT			5101
-#define TBLTEXT_OK				5102
+#define TBLTEXT_EXIT 5101
+#define TBLTEXT_OK 5102
 
 namespace D2Panels
 {
@@ -28,10 +28,19 @@ namespace D2Panels
 		pCancelButton->AttachIdentifier("cc_cancel");
 		pOKButton->AttachIdentifier("cc_ok");
 
-		pCancelButton->AddEventListener(Clicked, [] {
+		pCancelButton->AddEventListener(Clicked, []
+										{
 			delete cl.pActiveMenu;
-			cl.pActiveMenu = new D2Menus::CharSelect();
-			});
+			cl.pActiveMenu = new D2Menus::CharSelect(); });
+
+		pOKButton->AddEventListener(Clicked, []
+									{
+			D2Menus::CharCreate* charCreate = dynamic_cast<D2Menus::CharCreate*>(cl.pActiveMenu);
+			if (charCreate != nullptr && charCreate->TrySaveCharacter())
+			{
+				delete cl.pActiveMenu;
+				cl.pActiveMenu = new D2Menus::CharSelect();
+			} });
 
 		pOKButton->Disable();
 	}

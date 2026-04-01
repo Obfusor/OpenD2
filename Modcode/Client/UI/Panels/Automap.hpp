@@ -8,9 +8,9 @@
 class Automap : public D2Panel
 {
 public:
-	Automap();
-	~Automap();
+    Automap();
+    ~Automap();
 
-	void Draw() override;
-	void Tick(DWORD dwDeltaMs) override;
+    void Draw() override;
+    void Tick(DWORD dwDeltaMs) override;
 };

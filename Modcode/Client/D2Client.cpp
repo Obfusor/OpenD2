@@ -4,20 +4,21 @@
 #include "UI/Menus/TCPIP.hpp"
 #include "UI/Menus/Ingame.hpp"
 #include "Game/D2Game.hpp"
+#include "Game/D2World.hpp"
 #include "Game/D2Input.hpp"
 #ifdef _DEBUG
 #include "D2ClientDebug.hpp"
 #endif
 
-D2ModuleImportStrc* engine = nullptr;
-D2GameConfigStrc* config = nullptr;
-OpenD2ConfigStrc* openConfig = nullptr;
+D2ModuleImportStrc *engine = nullptr;
+D2GameConfigStrc *config = nullptr;
+OpenD2ConfigStrc *openConfig = nullptr;
 D2Client cl;
 
 /*
  *	Initializes the client
  */
-static void D2Client_InitializeClient(D2GameConfigStrc* pConfig, OpenD2ConfigStrc* pOpenConfig)
+static void D2Client_InitializeClient(D2GameConfigStrc *pConfig, OpenD2ConfigStrc *pOpenConfig)
 {
 	config = pConfig;
 	openConfig = pOpenConfig;
@@ -30,13 +31,12 @@ static void D2Client_InitializeClient(D2GameConfigStrc* pConfig, OpenD2ConfigStr
 	cl.font30 = engine->graphics->LoadFont("data\\local\\font\\latin\\font30.dc6", "font30");
 	cl.font42 = engine->graphics->LoadFont("data\\local\\font\\latin\\font42.dc6", "font42");
 	cl.fontFormal12 = engine->graphics->LoadFont("data\\local\\font\\latin\\fontformal12.dc6",
-		"fontformal12");
+												 "fontformal12");
 	cl.fontExocet10 = engine->graphics->LoadFont("data\\local\\font\\latin\\fontexocet10.dc6",
-		"fontexocet10");
+												 "fontexocet10");
 	cl.fontRidiculous = engine->graphics->LoadFont(
 		"data\\local\\font\\latin\\fontridiculous.dc6",
-		"fontridiculous"
-	);
+		"fontridiculous");
 
 	// Set first menu to be trademark menu
 	cl.gamestate = GS_TRADEMARK;
@@ -55,12 +55,12 @@ void D2Client_GoToContextMenu()
 {
 	switch (cl.charSelectContext)
 	{
-		case CSC_SINGLEPLAYER:
-			cl.pActiveMenu = new D2Menus::Main();
-			break;
-		case CSC_TCPIP:
-			cl.pActiveMenu = new D2Menus::TCPIP();
-			break;
+	case CSC_SINGLEPLAYER:
+		cl.pActiveMenu = new D2Menus::Main();
+		break;
+	case CSC_TCPIP:
+		cl.pActiveMenu = new D2Menus::TCPIP();
+		break;
 	}
 }
 
@@ -87,7 +87,6 @@ void D2Client_SetupServerConnection()
 		engine->NET_Listen(GAME_PORT);
 		cl.bLocalServer = true;
 	}
-	
 }
 
 /*
@@ -97,12 +96,12 @@ static void D2Client_HandleWindowEvent(WindowEvent windowEvent)
 {
 	switch (windowEvent.event)
 	{
-		case D2WindowEventType::WINDOWEVENT_FOCUS_GAINED:
-			engine->S_ResumeAudio();
-			break;
-		case D2WindowEventType::WINDOWEVENT_FOCUS_LOST:
-			engine->S_PauseAudio();
-			break;
+	case D2WindowEventType::WINDOWEVENT_FOCUS_GAINED:
+		engine->S_ResumeAudio();
+		break;
+	case D2WindowEventType::WINDOWEVENT_FOCUS_LOST:
+		engine->S_PauseAudio();
+		break;
 	}
 }
 
@@ -116,93 +115,93 @@ static void D2Client_HandleInput()
 	// All of the input data now lives in the OpenD2 config (yeah...) and we can iterate over it.
 	for (DWORD i = 0; i < openConfig->dwNumPendingCommands; i++)
 	{
-		D2CommandQueue* pCmd = &openConfig->pCmds[i];
+		D2CommandQueue *pCmd = &openConfig->pCmds[i];
 		// Handle all of the different event types
 		switch (pCmd->cmdType)
 		{
-			case IN_WINDOW:
-				D2Client_HandleWindowEvent(pCmd->cmdData.window);
-				break;
-			case IN_MOUSEMOVE:
-				cl.dwMouseX = pCmd->cmdData.motion.x;
-				cl.dwMouseY = pCmd->cmdData.motion.y;
-				break;
+		case IN_WINDOW:
+			D2Client_HandleWindowEvent(pCmd->cmdData.window);
+			break;
+		case IN_MOUSEMOVE:
+			cl.dwMouseX = pCmd->cmdData.motion.x;
+			cl.dwMouseY = pCmd->cmdData.motion.y;
+			break;
 
-			case IN_MOUSEDOWN:
-				if (pCmd->cmdData.button.buttonID == B_MOUSE1)
+		case IN_MOUSEDOWN:
+			if (pCmd->cmdData.button.buttonID == B_MOUSE1)
+			{
+				cl.bMouseDown = true;
+			}
+			break;
+
+		case IN_MOUSEUP:
+			if (pCmd->cmdData.button.buttonID == B_MOUSE1)
+			{
+				if (cl.bMouseDown)
 				{
-					cl.bMouseDown = true;
+					cl.bMouseDown = false;
+					cl.bMouseClicked = true;
 				}
-				break;
+			}
+			break;
 
-			case IN_MOUSEUP:
-				if (pCmd->cmdData.button.buttonID == B_MOUSE1)
-				{
-					if (cl.bMouseDown)
-					{
-						cl.bMouseDown = false;
-						cl.bMouseClicked = true;
-					}
-				}
-				break;
+		case IN_KEYDOWN:
+			if (cl.pActiveMenu != nullptr)
+			{
+				cl.pActiveMenu->HandleKeyDown(pCmd->cmdData.button.buttonID);
+			}
+			break;
 
-			case IN_KEYDOWN:
-				if (cl.pActiveMenu != nullptr)
-				{
-					cl.pActiveMenu->HandleKeyDown(pCmd->cmdData.button.buttonID);
-				}
-				break;
-
-			case IN_KEYUP:
-				// FIXME: handle binds also
+		case IN_KEYUP:
+			// FIXME: handle binds also
 #ifdef _DEBUG
-				if (openConfig->currentGameMode == OpenD2GameModes::MapPreviewer)
+			if (openConfig->currentGameMode == OpenD2GameModes::MapPreviewer)
+			{
+				if (Debug::HandleKeyInput(pCmd->cmdData.button.buttonID))
 				{
-					if (Debug::HandleKeyInput(pCmd->cmdData.button.buttonID))
-					{
-						break;
-					}
+					break;
 				}
+			}
 #endif
-				// Process keybinds when in-game
-				if (cl.gamestate == GS_INGAME && gpInputBindings != nullptr)
+			// Process keybinds when in-game
+			if (cl.gamestate == GS_INGAME && gpInputBindings != nullptr)
+			{
+				D2BindAction action = gpInputBindings->ProcessKeyUp(pCmd->cmdData.button.buttonID, 0);
+				if (action != BIND_NONE)
 				{
-					D2BindAction action = gpInputBindings->ProcessKeyUp(pCmd->cmdData.button.buttonID, 0);
-					if (action != BIND_NONE)
-					{
-						D2Input_HandleBindAction(action);
-						break;
-					}
+					D2Input_HandleBindAction(action);
+					break;
 				}
+			}
 
-				if (cl.pActiveMenu != nullptr)
-				{
-					cl.pActiveMenu->HandleKeyUp(pCmd->cmdData.button.buttonID);
-				}
-				break;
+			if (cl.pActiveMenu != nullptr)
+			{
+				cl.pActiveMenu->HandleKeyUp(pCmd->cmdData.button.buttonID);
+			}
+			break;
 
-			case IN_TEXTEDITING:
-				// only menus need to work with text editing
-				if (cl.pActiveMenu != nullptr)
-				{
-					cl.pActiveMenu->HandleTextEditing(pCmd->cmdData.text.text, 
-						pCmd->cmdData.text.start, pCmd->cmdData.text.length);
-				}
-				break;
+		case IN_TEXTEDITING:
+			// only menus need to work with text editing
+			if (cl.pActiveMenu != nullptr)
+			{
+				cl.pActiveMenu->HandleTextEditing(pCmd->cmdData.text.text,
+												  pCmd->cmdData.text.start, pCmd->cmdData.text.length);
+			}
+			break;
 
-			case IN_TEXTINPUT:
-				if (cl.pActiveMenu != nullptr)
-				{
-					cl.pActiveMenu->HandleTextInput(pCmd->cmdData.text.text);
-				}
-				break;
+		case IN_TEXTINPUT:
+			if (cl.pActiveMenu != nullptr)
+			{
+				cl.pActiveMenu->HandleTextInput(pCmd->cmdData.text.text);
+			}
+			break;
 
-			case IN_MOUSEWHEEL:
-				break;
+		case IN_MOUSEWHEEL:
+			break;
 
-			case IN_QUIT:
-				cl.bKillGame = true;
-				break;
+		case IN_QUIT:
+			cl.bKillGame = true;
+			break;
 		}
 	}
 
@@ -228,18 +227,57 @@ static void D2Client_HandleInput()
 }
 
 /*
+ *	Derives the starting town level ID and difficulty from the save header.
+ *	Reads cl.currentSave.header.nTowns[] to find the active difficulty (bit 7 set)
+ *	and the current act (bits 0-2).
+ */
+static int D2Client_GetStartingTownLevel(BYTE *pOutDifficulty = nullptr, BYTE *pOutAct = nullptr)
+{
+	static const int townLevels[MAX_ACTS] = {
+		D2LEVEL_ACT1_TOWN,
+		D2LEVEL_ACT2_TOWN,
+		D2LEVEL_ACT3_TOWN,
+		D2LEVEL_ACT4_TOWN,
+		D2LEVEL_ACT5_TOWN};
+
+	BYTE nDifficulty = D2DIFF_NORMAL;
+	BYTE nAct = 0;
+
+	// Find the active difficulty (bit 7 set in nTowns), search from Hell down
+	for (int i = D2DIFF_MAX - 1; i >= 0; i--)
+	{
+		if (cl.currentSave.header.nTowns[i] & 0x80)
+		{
+			nDifficulty = (BYTE)i;
+			nAct = cl.currentSave.header.nTowns[i] & 0x07;
+			break;
+		}
+	}
+
+	if (nAct >= MAX_ACTS)
+		nAct = 0;
+
+	if (pOutDifficulty)
+		*pOutDifficulty = nDifficulty;
+	if (pOutAct)
+		*pOutAct = nAct;
+
+	return townLevels[nAct];
+}
+
+/*
  *	Load stuff between main menu and regular game
  *	@author	eezstreet
  */
 static void D2Client_LoadData()
 {
 	if (cl.nLoadState == 0)
-	{	// load D2Common
+	{ // load D2Common
 		D2Common_Init(engine, config, openConfig);
 		cl.nLoadState++;
 	}
 	else if (cl.nLoadState == 1)
-	{	// load interface
+	{ // load interface
 
 		// Prime the server for init.
 		if (cl.bLocalServer)
@@ -249,51 +287,73 @@ static void D2Client_LoadData()
 		cl.nLoadState++;
 	}
 	else if (cl.nLoadState == 2)
-	{	// D2Game is loaded on this step if we are running a local game. The client need not do anything here.
+	{ // D2Game is loaded on this step if we are running a local game. The client need not do anything here.
 		cl.nLoadState++;
 	}
 	else if (cl.nLoadState == 3)
-	{	// START HERE if in an inter-act loading.
-		// Create the level
+	{ // START HERE if in an inter-act loading.
+	  // Create the level
 #ifdef _DEBUG
 		if (openConfig->currentGameMode == OpenD2GameModes::MapPreviewer)
 		{
 			Debug::LoadWorld();
 		}
+		else
 #endif
+		{
+			// Normal game: load the world for the character's last town
+			if (gpWorld == nullptr)
+			{
+				gpWorld = new D2ClientWorld();
+			}
+			gpWorld->LoadLevel(D2Client_GetStartingTownLevel());
+		}
 		cl.nLoadState++;
 	}
 	else if (cl.nLoadState == 4)
-	{	// ??
+	{ // ??
 		cl.nLoadState++;
 	}
 	else if (cl.nLoadState == 5)
-	{	// ??
+	{ // ??
 		cl.nLoadState++;
 	}
 	else if (cl.nLoadState == 6)
-	{	// ??
+	{ // ??
 		cl.nLoadState++;
 	}
 	else if (cl.nLoadState == 7)
-	{	// ??
+	{ // ??
 		cl.nLoadState++;
 	}
 	else if (cl.nLoadState == 8)
-	{	// ??
+	{ // ??
 		cl.nLoadState++;
 	}
 	else if (cl.nLoadState == 9)
-	{	// go ingame
+	{ // go ingame
 		cl.nLoadState = 0;
 		cl.gamestate = GS_INGAME;
 
-		// Create the client game state
+		// Clean up the loading menu
+		if (cl.pLoadingMenu != nullptr)
+		{
+			delete cl.pLoadingMenu;
+			cl.pLoadingMenu = nullptr;
+		}
+
+		// Create the client game state from save header
 		if (gpGame == nullptr)
 		{
+			BYTE nSaveDifficulty = D2DIFF_NORMAL;
+			BYTE nSaveAct = 0;
+			int nTownLevel = D2Client_GetStartingTownLevel(&nSaveDifficulty, &nSaveAct);
+			bool bExpansion = (cl.currentSave.header.nCharStatus & 0x20) != 0;
+
 			gpGame = new D2ClientGame();
-			gpGame->Initialize(0, 0, D2LEVEL_ACT1_TOWN, 0,
-				config->dwExpansion != 0, config->nDifficulty);
+			gpGame->Initialize(0, nSaveAct, (WORD)nTownLevel,
+							   cl.currentSave.header.dwSeed,
+							   bExpansion, nSaveDifficulty);
 		}
 
 		// Switch to the in-game menu
@@ -315,14 +375,14 @@ static void D2Client_PingServer()
 	D2Packet packet;
 
 	if (cl.bLocalServer || !cl.bValidatedSave)
-	{	// We don't need to do this in a local server, or if we haven't started the handshake yet.
+	{ // We don't need to do this in a local server, or if we haven't started the handshake yet.
 		return;
 	}
 
 	dwTicks = engine->Milliseconds();
 
 	if (dwTicks - cl.dwLastPingPacket >= 5000)
-	{	// Send one packet every 5 seconds
+	{ // Send one packet every 5 seconds
 		packet.nPacketType = D2CPACKET_PING;
 		packet.packetData.Ping.dwTickCount = dwTicks;
 		packet.packetData.Ping.dwUnknown = 0;
@@ -352,7 +412,7 @@ static void D2Client_RunClientFrame()
 
 		// Draw the active menu.
 		if (cl.pActiveMenu != nullptr)
-		{	// it can become null between now and then
+		{ // it can become null between now and then
 			cl.pActiveMenu->Draw();
 		}
 	}
@@ -388,7 +448,7 @@ static void D2Client_RunClientFrame()
 /*
  *	This gets called every frame. We return the next module to run after this one.
  */
-static OpenD2Modules D2Client_RunModuleFrame(D2GameConfigStrc* pConfig, OpenD2ConfigStrc* pOpenConfig)
+static OpenD2Modules D2Client_RunModuleFrame(D2GameConfigStrc *pConfig, OpenD2ConfigStrc *pOpenConfig)
 {
 	if (config == nullptr && openConfig == nullptr && pConfig != nullptr && pOpenConfig != nullptr)
 	{
@@ -404,7 +464,7 @@ static OpenD2Modules D2Client_RunModuleFrame(D2GameConfigStrc* pConfig, OpenD2Co
 	}
 
 	if (cl.bLocalServer && cl.bClientReadyForServer)
-	{	// If we're running a local server, we need to run that next (it will *always* run the client in the next step)
+	{ // If we're running a local server, we need to run that next (it will *always* run the client in the next step)
 		return MODULE_SERVER;
 	}
 
@@ -420,6 +480,13 @@ static void D2Client_Shutdown()
 	{
 		delete cl.pActiveMenu;
 		cl.pActiveMenu = nullptr;
+	}
+
+	// Clean up world
+	if (gpWorld != nullptr)
+	{
+		delete gpWorld;
+		gpWorld = nullptr;
 	}
 
 	// Clean up game state
@@ -441,64 +508,64 @@ static void D2Client_Shutdown()
  *	This gets called whenever we receive a packet.
  *	@author	eezstreet
  */
-static bool D2Client_HandlePacket(D2Packet* pPacket)
+static bool D2Client_HandlePacket(D2Packet *pPacket)
 {
 	switch (pPacket->nPacketType)
 	{
-		// Handshake / connection packets
-		case D2SPACKET_COMPRESSIONINFO:
-			ClientPacket::ProcessCompressionPacket(pPacket);
-			break;
-		case D2SPACKET_SAVESTATUS:
-			ClientPacket::ProcessSavegameStatusPacket(pPacket);
-			break;
-		case D2SPACKET_GAMEFLAGS:
-			ClientPacket::ProcessServerMetaPacket(pPacket);
-			break;
-		case D2SPACKET_PONG:
-			ClientPacket::ProcessPongPacket(pPacket);
-			break;
+	// Handshake / connection packets
+	case D2SPACKET_COMPRESSIONINFO:
+		ClientPacket::ProcessCompressionPacket(pPacket);
+		break;
+	case D2SPACKET_SAVESTATUS:
+		ClientPacket::ProcessSavegameStatusPacket(pPacket);
+		break;
+	case D2SPACKET_GAMEFLAGS:
+		ClientPacket::ProcessServerMetaPacket(pPacket);
+		break;
+	case D2SPACKET_PONG:
+		ClientPacket::ProcessPongPacket(pPacket);
+		break;
 
-		// In-game packets (from Ghidra: GAME/SCmd.cpp dispatch table)
-		case D2SPACKET_ASSIGNPLAYER:
-			ClientPacket::ProcessAssignPlayer(pPacket);
-			break;
-		case D2SPACKET_PLAYERJOINED:
-			ClientPacket::ProcessPlayerJoined(pPacket);
-			break;
-		case D2SPACKET_PLAYERLEFT:
-			ClientPacket::ProcessPlayerLeft(pPacket);
-			break;
-		case D2SPACKET_ASSIGNNPC:
-			ClientPacket::ProcessAssignNPC(pPacket);
-			break;
-		case D2SPACKET_REMOVEOBJECT:
-			ClientPacket::ProcessRemoveObject(pPacket);
-			break;
-		case D2SPACKET_PLAYERSTOP:
-			ClientPacket::ProcessPlayerStop(pPacket);
-			break;
-		case D2SPACKET_PLAYERMOVECOORD:
-			ClientPacket::ProcessPlayerMoveCoord(pPacket);
-			break;
-		case D2SPACKET_NPCMOVECOORD:
-			ClientPacket::ProcessNPCMoveCoord(pPacket);
-			break;
-		case D2SPACKET_NPCSTOP:
-			ClientPacket::ProcessNPCStop(pPacket);
-			break;
-		case D2SPACKET_NPCSTATE:
-			ClientPacket::ProcessNPCState(pPacket);
-			break;
-		case D2SPACKET_CHAT:
-			ClientPacket::ProcessChat(pPacket);
-			break;
-		case D2SPACKET_LIFEMANA:
-			ClientPacket::ProcessLifeMana(pPacket);
-			break;
-		case D2SPACKET_LOADACT:
-			ClientPacket::ProcessLoadAct(pPacket);
-			break;
+	// In-game packets (from Ghidra: GAME/SCmd.cpp dispatch table)
+	case D2SPACKET_ASSIGNPLAYER:
+		ClientPacket::ProcessAssignPlayer(pPacket);
+		break;
+	case D2SPACKET_PLAYERJOINED:
+		ClientPacket::ProcessPlayerJoined(pPacket);
+		break;
+	case D2SPACKET_PLAYERLEFT:
+		ClientPacket::ProcessPlayerLeft(pPacket);
+		break;
+	case D2SPACKET_ASSIGNNPC:
+		ClientPacket::ProcessAssignNPC(pPacket);
+		break;
+	case D2SPACKET_REMOVEOBJECT:
+		ClientPacket::ProcessRemoveObject(pPacket);
+		break;
+	case D2SPACKET_PLAYERSTOP:
+		ClientPacket::ProcessPlayerStop(pPacket);
+		break;
+	case D2SPACKET_PLAYERMOVECOORD:
+		ClientPacket::ProcessPlayerMoveCoord(pPacket);
+		break;
+	case D2SPACKET_NPCMOVECOORD:
+		ClientPacket::ProcessNPCMoveCoord(pPacket);
+		break;
+	case D2SPACKET_NPCSTOP:
+		ClientPacket::ProcessNPCStop(pPacket);
+		break;
+	case D2SPACKET_NPCSTATE:
+		ClientPacket::ProcessNPCState(pPacket);
+		break;
+	case D2SPACKET_CHAT:
+		ClientPacket::ProcessChat(pPacket);
+		break;
+	case D2SPACKET_LIFEMANA:
+		ClientPacket::ProcessLifeMana(pPacket);
+		break;
+	case D2SPACKET_LOADACT:
+		ClientPacket::ProcessLoadAct(pPacket);
+		break;
 	}
 	return true;
 }
@@ -506,10 +573,10 @@ static bool D2Client_HandlePacket(D2Packet* pPacket)
 /*
  *	GetModuleAPI allows us to exchange a series of function pointers with the engine.
  */
-static D2ModuleExportStrc gExports{ 0 };
+static D2ModuleExportStrc gExports{0};
 extern "C"
 {
-	D2EXPORT D2ModuleExportStrc* GetModuleAPI(D2ModuleImportStrc* pImports)
+	D2EXPORT D2ModuleExportStrc *GetModuleAPI(D2ModuleImportStrc *pImports)
 	{
 		if (pImports == nullptr)
 		{

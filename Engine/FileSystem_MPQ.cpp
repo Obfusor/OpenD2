@@ -1,6 +1,8 @@
 #include "FileSystem_MPQ.hpp"
+#include "FileSystem.hpp"
 #include "Logging.hpp"
 #include "MPQ.hpp"
+#include "Platform.hpp"
 
 /*
  *	The MPQ file system is an extension of the original filesystem.
@@ -23,10 +25,15 @@ namespace FSMPQ
 	static MPQSearchPath* gpMPQSearchPaths;
 
 	/*
-	 *	Initializes the MPQ filesystem
+	 *	Initializes the MPQ filesystem.
+	 *	First loads the base game MPQs (from basepath), then loads any
+	 *	additional MPQs found in the modpath directory on top.
+	 *	Since the search path is a stack (last added = first searched),
+	 *	mod MPQs automatically take priority over base game MPQs.
 	 */
 	void Init()
 	{
+		// Base game MPQs - loaded from basepath
 		AddSearchPath("D2DATA", "d2data.mpq");
 		AddSearchPath("D2CHAR", "d2char.mpq");
 		AddSearchPath("D2SFX", "d2sfx.mpq");
@@ -42,6 +49,14 @@ namespace FSMPQ
 		AddSearchPath("D2EXPANSION", "d2XTalk.mpq");
 		AddSearchPath("D2EXPANSION", "d2XMusic.mpq");
 		AddSearchPath("PATCH_D2", "patch_d2.mpq");
+
+		// If a modpath is configured, scan it for additional MPQs.
+		// These are loaded last and therefore searched first.
+		const char* szModPath = FS::GetModPath();
+		if (szModPath[0] != '\0')
+		{
+			LoadDirectoryMPQs(szModPath);
+		}
 	}
 
 	/*
@@ -106,6 +121,71 @@ namespace FSMPQ
 		gpMPQSearchPaths = pNew;
 
 		return pNew->pArchive;
+	}
+
+	/*
+	 *	Scans a directory for *.mpq files and adds each one to the search path.
+	 *	MPQ files already loaded (by filename, case-insensitive) are skipped.
+	 *	This allows a mod folder to override base game data by layering
+	 *	its MPQs on top of the base game's MPQs.
+	 */
+	void LoadDirectoryMPQs(const char* szDirectory)
+	{
+		char szFiles[MAX_FILE_LIST_SIZE][MAX_D2PATH_ABSOLUTE]{ 0 };
+		int nFiles = 0;
+
+		// Scan the directory for .mpq files
+		Sys::ListFilesInDirectory((char*)szDirectory, "*.mpq", "", &nFiles, &szFiles);
+		if (nFiles <= 0)
+		{
+			Log::Print(PRIORITY_MESSAGE, "FSMPQ: No mod MPQs found in '%s'", szDirectory);
+			return;
+		}
+
+		Log::Print(PRIORITY_MESSAGE, "FSMPQ: Found %d mod MPQ(s) in '%s'", nFiles, szDirectory);
+
+		for (int i = 0; i < nFiles; i++)
+		{
+			// szFiles[i] is "/filename.mpq" (originalPath="" + "/" + cFileName)
+			// Extract just the filename
+			char* szFileName = szFiles[i];
+			if (szFileName[0] == '/' || szFileName[0] == '\\')
+				szFileName++;
+
+			// Skip if this MPQ filename matches one already loaded in the base set
+			bool bAlreadyLoaded = false;
+			MPQSearchPath* pCheck = gpMPQSearchPaths;
+			while (pCheck != nullptr)
+			{
+				if (!D2Lib::stricmp(pCheck->szPath, szFileName))
+				{
+					bAlreadyLoaded = true;
+					break;
+				}
+				pCheck = pCheck->pNext;
+			}
+
+			if (bAlreadyLoaded)
+			{
+				Log::Print(PRIORITY_MESSAGE, "FSMPQ: Skipping '%s' (already loaded as base)", szFileName);
+				continue;
+			}
+
+			// Derive a search-path name from the filename (uppercase, no extension)
+			char szName[MAX_D2PATH]{ 0 };
+			D2Lib::strncpyz(szName, szFileName, MAX_D2PATH);
+			char* pDot = strrchr(szName, '.');
+			if (pDot) *pDot = '\0';
+			for (char* p = szName; *p; p++)
+			{
+				if (*p >= 'a' && *p <= 'z')
+					*p -= 32;
+			}
+
+			// Pass just the filename — FS::Open will find it in the modpath
+			Log::Print(PRIORITY_MESSAGE, "FSMPQ: Loading mod MPQ '%s' as '%s'", szFileName, szName);
+			AddSearchPath(szName, szFileName);
+		}
 	}
 
 	/*

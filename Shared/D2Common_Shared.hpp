@@ -11,7 +11,7 @@
 //
 //	Preprocessor Definitions
 
-#define MAX_LEVEL_CONNECTIONS	8
+#define MAX_LEVEL_CONNECTIONS 8
 
 #ifdef WIN32
 #ifndef D2COMMON
@@ -20,11 +20,11 @@
 #endif
 
 #ifdef D2COMMON
-#define D2COMMONAPI	D2EXPORT
-#define D2GAMEAPI	D2IMPORT
+#define D2COMMONAPI D2EXPORT
+#define D2GAMEAPI D2IMPORT
 #else
 #define D2COMMONAPI D2IMPORT
-#define D2GAMEAPI	D2EXPORT
+#define D2GAMEAPI D2EXPORT
 #endif
 
 ////////////////////////////////////////////////
@@ -126,8 +126,8 @@ enum D2Levels
 	D2LEVEL_ACT3_DUNGEON1B,			// Swampy Pit Level 2
 	D2LEVEL_ACT3_DUNGEON2A,			// Flayer Dungeon Level 1
 	D2LEVEL_ACT3_DUNGEON2B,			// Flayer Dungeon Level 2
-	D2LEVEL_ACT3_DUNGEON1_TREASURE,	// Swampy Pit Level 1
-	D2LEVEL_ACT3_DUNGEON2_TREASURE,	// Flayer Dungeon Level 3
+	D2LEVEL_ACT3_DUNGEON1_TREASURE, // Swampy Pit Level 1
+	D2LEVEL_ACT3_DUNGEON2_TREASURE, // Flayer Dungeon Level 3
 	D2LEVEL_ACT3_SEWER1,			// Sewers Level 1
 	D2LEVEL_ACT3_SEWER2,			// Sewers Level 2
 	D2LEVEL_ACT3_TEMPLE1,			// Ruined Temple
@@ -174,41 +174,41 @@ enum D2Levels
 enum D2LevelTypes
 {
 	D2LVLTYPE_NONE,
-	D2LVLTYPE_ACT1_TOWN,			// Rogue Encampment
-	D2LVLTYPE_ACT1_WILDERNESS,		// Blood Moor, Cold Plain, Stony Field ... Moo Moo Farm
-	D2LVLTYPE_ACT1_CAVE,			// Den of Evil, Caves, Underground Passage, Pit, Hole
-	D2LVLTYPE_ACT1_CRYPT,			// Forgotten Tower, Crypt, Mausoleum
-	D2LVLTYPE_ACT1_MONASTERY,		// Monastery Gate
-	D2LVLTYPE_ACT1_COURTYARD,		// Outer Cloister, Inner Cloister
-	D2LVLTYPE_ACT1_BARRACKS,		// Barracks
-	D2LVLTYPE_ACT1_JAIL,			// Jail
-	D2LVLTYPE_ACT1_CATHEDRAL,		// Cathedral
-	D2LVLTYPE_ACT1_CATACOMBS,		// Catacombs
-	D2LVLTYPE_ACT1_TRISTRAM,		// Tristram
-	D2LVLTYPE_ACT2_TOWN,			// Lut Gholein
-	D2LVLTYPE_ACT2_SEWER,			// Sewers, Ancient Tunnels
-	D2LVLTYPE_ACT2_HAREM,			// Harem
-	D2LVLTYPE_ACT2_BASEMENT,		// Palace Cellar
-	D2LVLTYPE_ACT2_DESERT,			// Rocky Waste, Dry Hills, Far Oasis, Lost City, ...
-	D2LVLTYPE_ACT2_TOMB,			// Stony Tomb, Halls of the Dead, Viper Temple, ...
-	D2LVLTYPE_ACT2_LAIR,			// Maggot Lair
-	D2LVLTYPE_ACT2_ARCANE,			// Arcane Sanctuary
-	D2LVLTYPE_ACT3_TOWN,			// Kurast Docks
-	D2LVLTYPE_ACT3_JUNGLE,			// Spider Forest, Flayer Jungle, Great Marsh
-	D2LVLTYPE_ACT3_KURAST,			// All Kurast, Durance, and Temple levels
-	D2LVLTYPE_ACT3_SPIDER,			// Spider Caverns, Arachnid Lair
-	D2LVLTYPE_ACT3_DUNGEON,			// Flayer Dungeon, Swampy Pit
-	D2LVLTYPE_ACT3_SEWER,			// Sewers
-	D2LVLTYPE_ACT4_TOWN,			// Pandemonium Fortress
-	D2LVLTYPE_ACT4_MESA,			// Outer Steppes, Plains of Despair, City of the Damned
-	D2LVLTYPE_ACT4_LAVA,			// River of Flame, Chaos Sanctum
-	D2LVLTYPE_ACT5_TOWN,			// Harrogath
-	D2LVLTYPE_ACT5_SIEGE,			// Bloody Foothills
-	D2LVLTYPE_ACT5_BARRICADE,		// Frigid Highlands, Nihlathak's Temple, Arreat Summit, ...
-	D2LVLTYPE_ACT5_TEMPLE,			// Halls of Pain, Halls of Torment, Halls of Vaught
-	D2LVLTYPE_ACT5_ICECAVES,		// Crystalline Passage, Frozen River, Glacial Trail, ...
-	D2LVLTYPE_ACT5_BAAL,			// Worldstone Keep
-	D2LVLTYPE_ACT5_LAVA,			// Abaddon, Pit of Archeron, Infernal Pit
+	D2LVLTYPE_ACT1_TOWN,	   // Rogue Encampment
+	D2LVLTYPE_ACT1_WILDERNESS, // Blood Moor, Cold Plain, Stony Field ... Moo Moo Farm
+	D2LVLTYPE_ACT1_CAVE,	   // Den of Evil, Caves, Underground Passage, Pit, Hole
+	D2LVLTYPE_ACT1_CRYPT,	   // Forgotten Tower, Crypt, Mausoleum
+	D2LVLTYPE_ACT1_MONASTERY,  // Monastery Gate
+	D2LVLTYPE_ACT1_COURTYARD,  // Outer Cloister, Inner Cloister
+	D2LVLTYPE_ACT1_BARRACKS,   // Barracks
+	D2LVLTYPE_ACT1_JAIL,	   // Jail
+	D2LVLTYPE_ACT1_CATHEDRAL,  // Cathedral
+	D2LVLTYPE_ACT1_CATACOMBS,  // Catacombs
+	D2LVLTYPE_ACT1_TRISTRAM,   // Tristram
+	D2LVLTYPE_ACT2_TOWN,	   // Lut Gholein
+	D2LVLTYPE_ACT2_SEWER,	   // Sewers, Ancient Tunnels
+	D2LVLTYPE_ACT2_HAREM,	   // Harem
+	D2LVLTYPE_ACT2_BASEMENT,   // Palace Cellar
+	D2LVLTYPE_ACT2_DESERT,	   // Rocky Waste, Dry Hills, Far Oasis, Lost City, ...
+	D2LVLTYPE_ACT2_TOMB,	   // Stony Tomb, Halls of the Dead, Viper Temple, ...
+	D2LVLTYPE_ACT2_LAIR,	   // Maggot Lair
+	D2LVLTYPE_ACT2_ARCANE,	   // Arcane Sanctuary
+	D2LVLTYPE_ACT3_TOWN,	   // Kurast Docks
+	D2LVLTYPE_ACT3_JUNGLE,	   // Spider Forest, Flayer Jungle, Great Marsh
+	D2LVLTYPE_ACT3_KURAST,	   // All Kurast, Durance, and Temple levels
+	D2LVLTYPE_ACT3_SPIDER,	   // Spider Caverns, Arachnid Lair
+	D2LVLTYPE_ACT3_DUNGEON,	   // Flayer Dungeon, Swampy Pit
+	D2LVLTYPE_ACT3_SEWER,	   // Sewers
+	D2LVLTYPE_ACT4_TOWN,	   // Pandemonium Fortress
+	D2LVLTYPE_ACT4_MESA,	   // Outer Steppes, Plains of Despair, City of the Damned
+	D2LVLTYPE_ACT4_LAVA,	   // River of Flame, Chaos Sanctum
+	D2LVLTYPE_ACT5_TOWN,	   // Harrogath
+	D2LVLTYPE_ACT5_SIEGE,	   // Bloody Foothills
+	D2LVLTYPE_ACT5_BARRICADE,  // Frigid Highlands, Nihlathak's Temple, Arreat Summit, ...
+	D2LVLTYPE_ACT5_TEMPLE,	   // Halls of Pain, Halls of Torment, Halls of Vaught
+	D2LVLTYPE_ACT5_ICECAVES,   // Crystalline Passage, Frozen River, Glacial Trail, ...
+	D2LVLTYPE_ACT5_BAAL,	   // Worldstone Keep
+	D2LVLTYPE_ACT5_LAVA,	   // Abaddon, Pit of Archeron, Infernal Pit
 	D2LVLTYPES_MAX,
 };
 
@@ -217,84 +217,198 @@ enum D2LevelTypes
 //	Savegame Structs
 //
 
-#define D2SAVE_MAGIC	0xAA55AA55
+#define D2SAVE_MAGIC 0xAA55AA55
 
 #if GAME_MINOR_VERSION >= 10
-#define D2SAVE_VERSION	96
+#define D2SAVE_VERSION 96
 #elif GAME_MINOR_VERSION >= 9
-#define D2SAVE_VERSION	92
+#define D2SAVE_VERSION 92
 #else
-#define	D2SAVE_VERSION	89
+#define D2SAVE_VERSION 89
 #endif
 
 #pragma pack(1)
 struct D2SaveHeaderMercData
 {
-	BYTE	bMercDead;
-	BYTE	nMercReviveCount;
-	DWORD	dwMercControl;
-	WORD	wMercName;
-	WORD	wMercType;
-	DWORD	dwMercExperience;
+	BYTE bMercDead;
+	BYTE nMercReviveCount;
+	DWORD dwMercControl;
+	WORD wMercName;
+	WORD wMercType;
+	DWORD dwMercExperience;
 };
 
 struct D2SaveHeader
 {
-	DWORD					dwMagic;
-	DWORD					dwVersion;
-	DWORD					dwFileSize;
-	DWORD					dwCRC;
-	DWORD					dwWeaponSet;
-	char					szCharacterName[16];
-	BYTE					nCharStatus;
-	BYTE					nCharTitle;
-	WORD					unk1;
-	BYTE					nCharClass;
-	WORD					unk2;
-	BYTE					nCharLevel;
-	DWORD					unk3;
-	DWORD					dwCreationTime;				// when this save was created
-	DWORD					dwModificationTime;			// when this save was modified
-	DWORD					dwSkillKey[16];				// which skill each skill key is bound to
-	DWORD					dwLeftSkill1;				// left skill for weapon set 1
-	DWORD					dwRightSkill1;				// right skill for weapon set 1
-	DWORD					dwLeftSkill2;				// left skill for weapon set 2
-	DWORD					dwRightSkill2;				// right skill for weapon set 2
-	BYTE					nAppearance[COMP_MAX];		// appearance in the char select screen
-	BYTE					nColor[COMP_MAX];			// color for each component
-	BYTE					nTowns[D2DIFF_MAX];			// last town the player was in in each difficulty
-	DWORD					dwSeed;						// seed
-	WORD					unk5;
-	D2SaveHeaderMercData	mercData;
-	BYTE					nRealmData[0x90];
+	DWORD dwMagic;
+	DWORD dwVersion;
+	DWORD dwFileSize;
+	DWORD dwCRC;
+	DWORD dwWeaponSet;
+	char szCharacterName[16];
+	BYTE nCharStatus;
+	BYTE nCharTitle;
+	WORD unk1;
+	BYTE nCharClass;
+	WORD unk2;
+	BYTE nCharLevel;
+	DWORD unk3;
+	DWORD dwCreationTime;		// when this save was created
+	DWORD dwModificationTime;	// when this save was modified
+	DWORD dwSkillKey[16];		// which skill each skill key is bound to
+	DWORD dwLeftSkill1;			// left skill for weapon set 1
+	DWORD dwRightSkill1;		// right skill for weapon set 1
+	DWORD dwLeftSkill2;			// left skill for weapon set 2
+	DWORD dwRightSkill2;		// right skill for weapon set 2
+	BYTE nAppearance[COMP_MAX]; // appearance in the char select screen
+	BYTE nColor[COMP_MAX];		// color for each component
+	BYTE nTowns[D2DIFF_MAX];	// last town the player was in in each difficulty
+	DWORD dwSeed;				// seed
+	WORD unk5;
+	D2SaveHeaderMercData mercData;
+	BYTE nRealmData[0x90];
+};
+#pragma pack()
+
+////////////////////////////////////////////////
+//
+//	Extended Savegame Data (parsed from full .d2s file)
+//
+
+#define MAX_D2SAVE_STATS 16	 // Character stats (IDs 0-15)
+#define MAX_D2SAVE_SKILLS 30 // Number of skills
+#define MAX_D2SAVE_ITEMS 512 // Max items to track per location
+#define MAX_D2SAVE_SOCKETS 6 // Max socketed gems per item
+
+struct D2SaveStatEntry
+{
+	WORD nStatId;
+	DWORD dwValue;
+};
+
+struct D2SaveItemEntry
+{
+	// Flags
+	bool bIdentified;
+	bool bSocketed;
+	bool bSimple;
+	bool bEar;
+	bool bEthereal;
+	bool bRuneword;
+	bool bPersonalized;
+
+	// Location
+	BYTE nParent;  // 0=stored, 1=equipped, 2=belt
+	BYTE nBodyLoc; // equipped body location
+	BYTE nColumn;  // grid x
+	BYTE nRow;	   // grid y
+	BYTE nStorage; // storage area (1=inv, 4=cube, 5=stash)
+
+	// Item identity
+	char szCode[5]; // 4-char item code + null (3-char codes space-padded)
+	DWORD dwId;		// unique anti-dupe ID
+	BYTE nILevel;	// item level
+	BYTE nQuality;	// 1=low, 2=normal, 3=superior, 4=magic, 5=set, 6=rare, 7=unique, 8=crafted
+
+	// Item properties
+	WORD nDefense;
+	BYTE nMaxDurability;
+	WORD nCurrentDurability;
+	WORD nQuantity;
+	BYTE nTotalSockets;
+	BYTE nGemCount; // number of socketed items
+
+	// Socketed items (inline — no dynamic allocation needed for engine structs)
+	BYTE nSocketedItemCount;
+	struct
+	{
+		char szCode[5];
+		DWORD dwId;
+	} socketedItems[MAX_D2SAVE_SOCKETS];
+};
+
+struct D2SaveExtendedData
+{
+	// Character stats
+	BYTE nStatCount;
+	D2SaveStatEntry stats[MAX_D2SAVE_STATS];
+
+	// Skills
+	BYTE skills[MAX_D2SAVE_SKILLS];
+
+	// Player items
+	WORD nPlayerItemCount;
+	D2SaveItemEntry playerItems[MAX_D2SAVE_ITEMS];
+
+	// Merc items
+	WORD nMercItemCount;
+	D2SaveItemEntry mercItems[MAX_D2SAVE_ITEMS];
+
+	// Parsing state
+	bool bFullyParsed; // true if all sections parsed ok
 };
 
 struct D2Savegame
 {
-	D2SaveHeader			header;
+	D2SaveHeader header;
+	D2SaveExtendedData extended;
 };
-#pragma pack()
 
 ////////////////////////////////////////////////
 //
 //	Functions
 
 // D2Common.cpp
-D2COMMONAPI void D2Common_Init(D2ModuleImportStrc* pTrap, D2GameConfigStrc* pConfig, OpenD2ConfigStrc* pOpenConfig);
+D2COMMONAPI void D2Common_Init(D2ModuleImportStrc *pTrap, D2GameConfigStrc *pConfig, OpenD2ConfigStrc *pOpenConfig);
 D2COMMONAPI void D2Common_ConstructWorld();
 D2COMMONAPI void D2Common_Shutdown();
-
 
 ////////////////////////////////////////////////
 //
 //	Preprocessor Macros
 
-#define Log_WarnAssert(x)	if(!x) { engine->Warning(__FILE__, __LINE__, #x); }
-#define Log_ErrorAssert(x)	if(!x) { engine->Error(__FILE__, __LINE__, #x); }
-#define WarnWithDescription(x, y)	if(!x) { engine->Warning(__FILE__, __LINE__, y); }
-#define AssertWithDescription(x, y)	if(!x) { engine->Error(__FILE__, __LINE__, y); }
+#define Log_WarnAssert(x)                        \
+	if (!x)                                      \
+	{                                            \
+		engine->Warning(__FILE__, __LINE__, #x); \
+	}
+#define Log_ErrorAssert(x)                     \
+	if (!x)                                    \
+	{                                          \
+		engine->Error(__FILE__, __LINE__, #x); \
+	}
+#define WarnWithDescription(x, y)               \
+	if (!x)                                     \
+	{                                           \
+		engine->Warning(__FILE__, __LINE__, y); \
+	}
+#define AssertWithDescription(x, y)           \
+	if (!x)                                   \
+	{                                         \
+		engine->Error(__FILE__, __LINE__, y); \
+	}
 
-#define Log_WarnAssertReturn(x, y)	if(!x) { engine->Warning(__FILE__, __LINE__, #x); return y; }
-#define Log_ErrorAssertReturn(x, y)	if(!x) { engine->Error(__FILE__, __LINE__, #x); return y; }
-#define WarnWithDescriptionReturn(x, y, z)	if(!x) { engine->Warning(__FILE__, __LINE__, y); return z; }
-#define AssertWithDescriptionReturn(x, y, z)	if(!x) { engine->Error(__FILE__, __LINE__, y); return z; }
+#define Log_WarnAssertReturn(x, y)               \
+	if (!x)                                      \
+	{                                            \
+		engine->Warning(__FILE__, __LINE__, #x); \
+		return y;                                \
+	}
+#define Log_ErrorAssertReturn(x, y)            \
+	if (!x)                                    \
+	{                                          \
+		engine->Error(__FILE__, __LINE__, #x); \
+		return y;                              \
+	}
+#define WarnWithDescriptionReturn(x, y, z)      \
+	if (!x)                                     \
+	{                                           \
+		engine->Warning(__FILE__, __LINE__, y); \
+		return z;                               \
+	}
+#define AssertWithDescriptionReturn(x, y, z)  \
+	if (!x)                                   \
+	{                                         \
+		engine->Error(__FILE__, __LINE__, y); \
+		return z;                             \
+	}

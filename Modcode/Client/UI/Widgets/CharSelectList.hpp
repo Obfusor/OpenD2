@@ -29,13 +29,25 @@ namespace D2Widgets
 		int nCurrentSelection;
 		int nNumberSaves;
 
+		// Double-click tracking
+		DWORD dwLastClickTick;
+		int nLastClickedSelection;
+
 		IGraphicsReference* greyFrameRef;
 		IGraphicsReference* frameRef;
+
+		// Scroll indicator arrows
+		IRenderObject* scrollUpArrow;
+		IRenderObject* scrollDownArrow;
 
 		const int nSlotWidth = 272;
 		const int nSlotHeight = 93;
 
 		void Clicked(DWORD dwX, DWORD dwY);
+		void ScrollUp();
+		void ScrollDown();
+		void EnsureSelectionVisible();
+		void EnterGame();
 
 		IRenderObject* topName;
 
@@ -51,6 +63,7 @@ namespace D2Widgets
 		virtual void Draw();
 		virtual bool HandleMouseDown(DWORD dwX, DWORD dwY);
 		virtual bool HandleMouseClick(DWORD dwX, DWORD dwY);
+		virtual bool HandleKeyDown(DWORD dwKey);
 
 		void Selected(int nNewSelection);
 	};
