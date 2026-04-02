@@ -530,22 +530,15 @@ void MapSelector::DrawFileList()
 
 		float y = (float)(LIST_Y + i * ROW_H);
 
-		// Draw group header if act changed
+		// Draw group separator line when act changes (no separate row consumed)
 		if (entry.actGroup != lastGroup)
 		{
-			float groupBg[] = {0.12f, 0.1f, 0.06f, 1.0f};
-			engine->renderer->DrawRectangle((float)LIST_X, y, (float)LIST_W, (float)ROW_H, 0, nullptr, groupBg);
-
-#ifdef USE_ALLEGRO5
-			DrawAlText((float)LIST_X + 4, y + 3, 0.8f, 0.65f, 0.3f, 1.0f, entry.actGroup.c_str());
-#endif
+			if (!lastGroup.empty())
+			{
+				float sepColor[] = {0.3f, 0.25f, 0.15f, 0.6f};
+				engine->renderer->DrawRectangle((float)LIST_X, y, (float)LIST_W - 12, 1, 0, nullptr, sepColor);
+			}
 			lastGroup = entry.actGroup;
-
-			// This row is used for the group header, advance
-			i++;
-			if (i >= m_visibleRows)
-				break;
-			y = (float)(LIST_Y + i * ROW_H);
 		}
 
 		// Highlight hovered row
@@ -624,14 +617,23 @@ void MapSelector::DrawPreview()
 
 	if (m_previewDS1 != INVALID_HANDLE && m_previewWidth > 0 && m_previewHeight > 0)
 	{
-		// Draw a miniature isometric grid preview of the DS1
+		// Limit preview rendering for very large maps
+		int pw = m_previewWidth;
+		int ph = m_previewHeight;
+		static const int MAX_PREVIEW_CELLS = 10000; // ~100x100 max
+		bool tooLarge = (pw * ph) > MAX_PREVIEW_CELLS;
+		if (tooLarge)
+		{
+			// Sample every Nth cell to keep rendering fast
+			// We still render all cells but skip some
+		}
+
 		// Scale to fit in the preview area
 		float tileW = 160.0f;
 		float tileH = 80.0f;
 
-		// Calculate the isometric bounding box
-		float isoW = (float)(m_previewWidth + m_previewHeight) * (tileW / 2.0f);
-		float isoH = (float)(m_previewWidth + m_previewHeight) * (tileH / 2.0f);
+		float isoW = (float)(pw + ph) * (tileW / 2.0f);
+		float isoH = (float)(pw + ph) * (tileH / 2.0f);
 
 		float scale = 1.0f;
 		if (isoW > 0 && isoH > 0)
@@ -644,29 +646,13 @@ void MapSelector::DrawPreview()
 		float halfW = tileW * scale / 2.0f;
 		float halfH = tileH * scale / 2.0f;
 
-		// Find center of occupied tiles (non-empty cells) for positioning
-		float isoMinX = 1e9f, isoMaxX = -1e9f;
-		float isoMinY = 1e9f, isoMaxY = -1e9f;
+		// For large maps, use grid center instead of scanning all cells
+		// Use grid-based centering (fast, no cell scanning)
+		float isoMinX = -(float)(ph - 1) * halfW;
+		float isoMaxX = (float)(pw - 1) * halfW;
+		float isoMinY = 0.0f;
+		float isoMaxY = (float)(pw - 1 + ph - 1) * halfH;
 
-		for (int ty = 0; ty < m_previewHeight; ty++)
-		{
-			for (int tx = 0; tx < m_previewWidth; tx++)
-			{
-				DS1Cell *cell = engine->DS1_GetCellAt(m_previewDS1, tx, ty, DS1Cell_Floor);
-				if (cell == nullptr) continue;
-				if (cell->prop1 == 0 && cell->prop2 == 0 && cell->prop3 == 0 && cell->prop4 == 0)
-					continue;
-
-				float sx = (float)(tx - ty) * halfW;
-				float sy = (float)(tx + ty) * halfH;
-				if (sx < isoMinX) isoMinX = sx;
-				if (sx > isoMaxX) isoMaxX = sx;
-				if (sy < isoMinY) isoMinY = sy;
-				if (sy > isoMaxY) isoMaxY = sy;
-			}
-		}
-
-		// Center of occupied area
 		float isoCenterX = (isoMinX + isoMaxX) / 2.0f;
 		float isoCenterY = (isoMinY + isoMaxY) / 2.0f;
 
@@ -677,10 +663,15 @@ void MapSelector::DrawPreview()
 		float offsetX = panelCenterX - isoCenterX;
 		float offsetY = panelCenterY - isoCenterY;
 
+		// For very large maps, skip cells to stay responsive
+		int step = 1;
+		if (pw * ph > 10000) step = 2;
+		if (pw * ph > 40000) step = 3;
+
 		// Draw floor cells as colored diamonds
-		for (int ty = 0; ty < m_previewHeight; ty++)
+		for (int ty = 0; ty < ph; ty += step)
 		{
-			for (int tx = 0; tx < m_previewWidth; tx++)
+			for (int tx = 0; tx < pw; tx += step)
 			{
 				DS1Cell *cell = engine->DS1_GetCellAt(m_previewDS1, tx, ty, DS1Cell_Floor);
 				if (cell == nullptr)
@@ -709,9 +700,9 @@ void MapSelector::DrawPreview()
 		}
 
 		// Draw wall cells as darker marks
-		for (int ty = 0; ty < m_previewHeight; ty++)
+		for (int ty = 0; ty < ph; ty += step)
 		{
-			for (int tx = 0; tx < m_previewWidth; tx++)
+			for (int tx = 0; tx < pw; tx += step)
 			{
 				DS1Cell *cell = engine->DS1_GetCellAt(m_previewDS1, tx, ty, DS1Cell_Wall);
 				if (cell == nullptr)
