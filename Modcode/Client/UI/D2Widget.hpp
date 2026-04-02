@@ -42,6 +42,7 @@ public:
 	virtual bool HandleMouseClick(DWORD dwX, DWORD dwY) = 0;
 	virtual bool HandleKeyDown(DWORD dwKey);
 	virtual bool HandleKeyUp(DWORD dwKey);
+	virtual bool HandleMouseWheel(int delta) { return false; }
 	virtual void Tick(DWORD dwDeltaMs) {}
 
 	friend class D2Panel;

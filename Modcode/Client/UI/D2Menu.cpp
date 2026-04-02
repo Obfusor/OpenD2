@@ -237,6 +237,23 @@ bool D2Menu::HandleMouseClicked(DWORD dwX, DWORD dwY)
 }
 
 /*
+ *	Handle a mouse wheel event
+ */
+bool D2Menu::HandleMouseWheel(int delta)
+{
+	D2Panel* pPanel = m_visiblePanels;
+	while (pPanel != nullptr)
+	{
+		if (pPanel->HandleMouseWheel(delta))
+		{
+			return true;
+		}
+		pPanel = pPanel->GetNextVisible();
+	}
+	return false;
+}
+
+/*
  *	Handle a key up event
  */
 bool D2Menu::HandleKeyUp(DWORD dwKey)

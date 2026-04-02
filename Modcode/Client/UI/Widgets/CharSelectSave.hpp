@@ -1,13 +1,14 @@
 #pragma once
 #include "../D2Widget.hpp"
 
-#define D2_NUM_VISIBLE_SAVES	8
+#define D2_NUM_VISIBLE_SAVES	20
+#define D2_ROW_HEIGHT			24
 
 namespace D2Widgets
 {
 	/**
-	 *	CharSelectSave is contained within a CharSelectList.
-	 *	It's a linked list of elements to draw.
+	 *	CharSelectSave represents one character in the list view.
+	 *	It's a linked list of entries — each one draws a single row.
 	 */
 	class CharSelectSave : public D2Widget
 	{
@@ -15,44 +16,43 @@ namespace D2Widgets
 		CharSelectSave* nextInChain;
 		char16_t charName[32];
 		char16_t charClassAndLevel[32];
+		char16_t charTitle[32];
+		char16_t charDifficulty[16];
+		char16_t charLastPlayed[16];
 		char path[MAX_D2PATH_ABSOLUTE];
 		bool bIsSelected, bHasTitle, bIsDeadHardcore, bIsExpansion, bIsHardcore;
 		D2SaveHeader saveHeader;
-		ITokenReference* token;
-
-		const int nSlotWidth = 272;
-		const int nSlotHeight = 93;
 
 		void OnSelected();
-
-		IRenderObject* selectionFrame;
-		IRenderObject* characterPreview;
-		IRenderObject* characterTitle;
-		IRenderObject* characterName;
-		IRenderObject* characterLevelAndClass;
-		IRenderObject* expansionText;
-		IRenderObject* characterRender;
 
 	public:
 		CharSelectSave(const char* characterSave, D2SaveHeader& header);
 		virtual ~CharSelectSave();
 
-		void SetDrawPosition(uint32_t x, uint32_t y);
+		void DrawRow(int rowX, int rowY, int rowW, bool bAltRow);
 
-		virtual void Draw();
-
-		bool CheckMouseDownInChain(DWORD dwX, DWORD dwY, int& counter);
-		bool CheckMouseClickInChain(DWORD dwX, DWORD dwY, int& counter);
-
+		virtual void Draw() {}
 		virtual bool HandleMouseDown(DWORD dwX, DWORD dwY) { return false; }
 		virtual bool HandleMouseClick(DWORD dwX, DWORD dwY) { return false; }
 
 		void SetNextInChain(CharSelectSave* next);
-		void DrawLink(int counter, bool bDrawLeft);
 		CharSelectSave* GetInChain(int counter);
 		void Select(int counter);
 		void DeselectAllInChain();
 
 		char16_t* GetSelectedCharacterName();
+		bool IsSelected() const { return bIsSelected; }
+		bool IsHardcore() const { return bIsHardcore; }
+		bool IsDeadHardcore() const { return bIsDeadHardcore; }
+		bool HasTitle() const { return bHasTitle; }
+		const char16_t* GetTitle() const { return charTitle; }
+		const char16_t* GetName() const { return charName; }
+		const char16_t* GetClassAndLevel() const { return charClassAndLevel; }
+		const char16_t* GetDifficulty() const { return charDifficulty; }
+		const char16_t* GetLastPlayed() const { return charLastPlayed; }
+		int GetLevel() const { return saveHeader.nCharLevel; }
+		int GetCharClass() const { return saveHeader.nCharClass; }
+		int GetDifficultyRank() const; // 0=Normal, 1=Nightmare, 2=Hell
+		void SetSelected(bool sel) { bIsSelected = sel; }
 	};
 }

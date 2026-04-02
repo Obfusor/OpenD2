@@ -2,30 +2,87 @@
 #include "../Panels/CharSelect.hpp"
 #include "../Menus/CharSelect.hpp"
 #include "CharSelectSave.hpp"
-#include "../Widgets/CharSelectSave.hpp"
+#include <allegro5/allegro.h>
+#include <allegro5/allegro_font.h>
+#include <allegro5/allegro_primitives.h>
+#include <algorithm>
+#include <cstring>
 
-// Mappings for the class token
-static char *gszClassTokens[D2CLASS_MAX] = {
-	"AM",
-	"SO",
-	"NE",
-	"PA",
-	"BA",
-	"DZ",
-	"AI",
-};
+// Local font for list rendering
+static ALLEGRO_FONT *s_pListFont = nullptr;
+
+static void EnsureFont()
+{
+	if (s_pListFont == nullptr)
+	{
+		s_pListFont = al_load_font("data/assets/fonts/ExocetBlizzardMedium.otf", 14, 0);
+		if (!s_pListFont)
+			s_pListFont = al_create_builtin_font();
+	}
+}
+
+static void ToNarrow(const char16_t *src, char *dst, int dstLen)
+{
+	int i = 0;
+	if (src)
+	{
+		for (; src[i] && i < dstLen - 1; i++)
+			dst[i] = (char)(src[i] & 0x7F);
+	}
+	dst[i] = 0;
+}
+
+// Compare two char16_t strings case-insensitively
+static int QStrCmpI(const char16_t *a, const char16_t *b)
+{
+	char na[64], nb[64];
+	ToNarrow(a, na, sizeof(na));
+	ToNarrow(b, nb, sizeof(nb));
+	return _stricmp(na, nb);
+}
 
 namespace D2Widgets
 {
-	/*
-	 *	Creates a Character Select list widget.
-	 *	This method is responsible for loading up all of the savegames.
-	 *	We should maybe cache the results of the savegame loading so that going to the charselect page doesn't take a while.
-	 */
-	CharSelectList::CharSelectList(int x, int y, int w, int h, IRenderObject *renderedName)
+	// Column layout (relative to x, total width 800px):
+	#define COL_TITLE   8
+	#define COL_NAME    128
+	#define COL_LEVEL   520
+	#define COL_CLASS   570
+	#define COL_DIFF    690
+
+	static const char *s_colNames[] = {"TITLE", "NAME", "LVL", "CLASS", "DIFFICULTY"};
+	static const int s_colX[] = {COL_TITLE, COL_NAME, COL_LEVEL, COL_CLASS, COL_DIFF};
+	static const SortColumn s_colEnum[] = {SORT_TITLE, SORT_NAME, SORT_LEVEL, SORT_CLASS, SORT_DIFFICULTY};
+	#define NUM_COLUMNS 5
+
+	static void DrawHeaderFooterRow(ALLEGRO_FONT *font, float fx, float fy, float fw, float rowH,
+		SortColumn activeSort, bool sortAsc)
+	{
+		al_draw_filled_rectangle(fx, fy, fx + fw, fy + rowH,
+			al_map_rgba(40, 35, 20, 220));
+
+		ALLEGRO_COLOR hc = al_map_rgb(200, 170, 70);
+		ALLEGRO_COLOR hcActive = al_map_rgb(255, 220, 100);
+		float ty = fy + (rowH - al_get_font_line_height(font)) / 2.0f;
+
+		for (int i = 0; i < NUM_COLUMNS; i++)
+		{
+			bool isActive = (s_colEnum[i] == activeSort);
+			ALLEGRO_COLOR col = isActive ? hcActive : hc;
+
+			char label[32];
+			if (isActive)
+				snprintf(label, sizeof(label), "%s %s", s_colNames[i], sortAsc ? "^" : "v");
+			else
+				snprintf(label, sizeof(label), "%s", s_colNames[i]);
+
+			al_draw_text(font, col, fx + s_colX[i], ty, ALLEGRO_ALIGN_LEFT, label);
+		}
+	}
+
+	CharSelectList::CharSelectList(int x, int y, int w, int h)
 		: D2Widget(x, y, w, h)
 	{
-		// Blank out our own data
 		nNumberSaves = 0;
 		nCurrentScroll = 0;
 		nCurrentSelection = -1;
@@ -33,150 +90,340 @@ namespace D2Widgets
 		pCharacterData = nullptr;
 		dwLastClickTick = 0;
 		nLastClickedSelection = -1;
-
-		greyFrameRef = engine->graphics->CreateReference("data\\global\\ui\\CharSelect\\charselectboxgrey.dc6", UsagePolicy_Permanent);
-		frameRef = engine->graphics->CreateReference("data\\global\\ui\\CharSelect\\charselectbox.dc6", UsagePolicy_Permanent);
-
-		// Create scroll indicator text
-		scrollUpArrow = engine->renderer->AllocateObject(1);
-		scrollUpArrow->AttachFontResource(cl.font16);
-		scrollUpArrow->SetText(u"-- More Above --");
-		scrollUpArrow->SetTextColor(TextColor_Gold);
-		scrollUpArrow->SetDrawCoords(x + w / 2 - 60, y - 2, 0, 0);
-
-		scrollDownArrow = engine->renderer->AllocateObject(1);
-		scrollDownArrow->AttachFontResource(cl.font16);
-		scrollDownArrow->SetText(u"-- More Below --");
-		scrollDownArrow->SetTextColor(TextColor_Gold);
-		scrollDownArrow->SetDrawCoords(x + w / 2 - 60, y + h - 10, 0, 0);
-
-		topName = renderedName;
+		sortColumn = SORT_NONE;
+		sortAscending = true;
 	}
 
-	/*
-	 *	Destroys the character select list widget
-	 */
 	CharSelectList::~CharSelectList()
 	{
-		// Free out the entire linked list
 		if (saves)
-		{
 			delete saves;
-		}
-
-		engine->graphics->DeleteReference(greyFrameRef);
-		engine->graphics->DeleteReference(frameRef);
-		engine->renderer->Remove(scrollUpArrow);
-		engine->renderer->Remove(scrollDownArrow);
 	}
 
-	/*
-	 *	Add a savegame to the list
-	 */
 	void CharSelectList::AddSave(D2SaveHeader &header, char *path)
 	{
-		// Allocate a character save entry
 		D2Widgets::CharSelectSave *newSave = new D2Widgets::CharSelectSave(path, header);
-
 		newSave->SetNextInChain(saves);
 		saves = newSave;
-
-		// Increment the save count.
 		nNumberSaves++;
 	}
 
-	/*
-	 *	This widget got added to the panel. Let's go ahead and tell the parent what we have selected.
-	 *	@author	eezstreet
-	 */
+	void CharSelectList::RebuildSortedList()
+	{
+		sortedSaves.clear();
+		CharSelectSave *cur = saves;
+		while (cur)
+		{
+			sortedSaves.push_back(cur);
+			cur = cur->GetInChain(1) != cur ? cur->GetInChain(1) : nullptr;
+		}
+
+		// Walk the chain properly
+		sortedSaves.clear();
+		for (int i = 0; i < nNumberSaves; i++)
+		{
+			sortedSaves.push_back(saves->GetInChain(i));
+		}
+	}
+
+	void CharSelectList::SortBy(SortColumn col)
+	{
+		if (sortedSaves.empty())
+			RebuildSortedList();
+
+		if (col == sortColumn)
+		{
+			sortAscending = !sortAscending;
+		}
+		else
+		{
+			sortColumn = col;
+			sortAscending = true;
+		}
+
+		// Remember which entry was selected
+		CharSelectSave *selectedEntry = nullptr;
+		if (nCurrentSelection >= 0 && nCurrentSelection < (int)sortedSaves.size())
+			selectedEntry = sortedSaves[nCurrentSelection];
+
+		bool asc = sortAscending;
+
+		std::sort(sortedSaves.begin(), sortedSaves.end(),
+			[col, asc](CharSelectSave *a, CharSelectSave *b) -> bool
+			{
+				int cmp = 0;
+				switch (col)
+				{
+				case SORT_TITLE:
+					cmp = QStrCmpI(a->GetTitle(), b->GetTitle());
+					break;
+				case SORT_NAME:
+					cmp = QStrCmpI(a->GetName(), b->GetName());
+					break;
+				case SORT_LEVEL:
+					cmp = a->GetLevel() - b->GetLevel();
+					break;
+				case SORT_CLASS:
+					cmp = a->GetCharClass() - b->GetCharClass();
+					break;
+				case SORT_DIFFICULTY:
+					cmp = a->GetDifficultyRank() - b->GetDifficultyRank();
+					break;
+				default:
+					return false;
+				}
+				return asc ? (cmp < 0) : (cmp > 0);
+			});
+
+		// Restore selection to the same entry
+		if (selectedEntry)
+		{
+			for (int i = 0; i < (int)sortedSaves.size(); i++)
+			{
+				if (sortedSaves[i] == selectedEntry)
+				{
+					nCurrentSelection = i;
+					break;
+				}
+			}
+			EnsureSelectionVisible();
+		}
+	}
+
+	void CharSelectList::HeaderClicked(DWORD dwX)
+	{
+		// Determine which column was clicked based on X position
+		int relX = (int)dwX;
+
+		// Walk columns right to left to find the match
+		SortColumn clicked = SORT_TITLE;
+		for (int i = NUM_COLUMNS - 1; i >= 0; i--)
+		{
+			if (relX >= s_colX[i])
+			{
+				clicked = s_colEnum[i];
+				break;
+			}
+		}
+
+		SortBy(clicked);
+	}
+
 	void CharSelectList::OnWidgetAdded()
 	{
+		RebuildSortedList();
 		Selected(nCurrentSelection);
 	}
 
-	/*
-	 *	Draws a Character Select list widget.
-	 */
 	void CharSelectList::Draw()
 	{
-		if (saves == nullptr)
-		{
+		EnsureFont();
+		if (!s_pListFont)
 			return;
-		}
-		// Draw the savegames from the current scroll position
-		saves->GetInChain(nCurrentScroll)->DrawLink(D2_NUM_VISIBLE_SAVES, true);
 
-		// Draw scroll indicators when list extends beyond visible area
+		// Build sorted list on first draw if not yet built
+		if (sortedSaves.empty() && nNumberSaves > 0)
+			RebuildSortedList();
+
+		int rowH = D2_ROW_HEIGHT;
+		int visibleRows = D2_NUM_VISIBLE_SAVES;
+		int listH = visibleRows * rowH;
+
+		float panelTop = (float)y - (float)rowH;
+		float panelBottom = (float)(y + listH) + (float)rowH;
+
+		// Dark background panel
+		al_draw_filled_rectangle((float)x - 4, panelTop - 4,
+			(float)(x + w + 4), panelBottom + 4,
+			al_map_rgba(0, 0, 0, 160));
+
+		// Gold/bronze 2px border
+		al_draw_rectangle((float)x - 4, panelTop - 4,
+			(float)(x + w + 4), panelBottom + 4,
+			al_map_rgb(160, 130, 50), 2.0f);
+
+		// Header row
+		DrawHeaderFooterRow(s_pListFont, (float)x, panelTop, (float)w, (float)rowH,
+			sortColumn, sortAscending);
+
+		// Footer row
+		DrawHeaderFooterRow(s_pListFont, (float)x, (float)(y + listH), (float)w, (float)rowH,
+			sortColumn, sortAscending);
+
+		if (sortedSaves.empty())
+			return;
+
+		// Draw each visible row
+		for (int i = 0; i < visibleRows && (nCurrentScroll + i) < (int)sortedSaves.size(); i++)
+		{
+			int saveIdx = nCurrentScroll + i;
+			CharSelectSave *entry = sortedSaves[saveIdx];
+			if (!entry)
+				break;
+
+			float rowY = (float)(y + i * rowH);
+			bool bAltRow = (i % 2 == 1);
+			bool bSelected = (saveIdx == nCurrentSelection);
+
+			// Row background
+			if (bSelected)
+			{
+				al_draw_filled_rectangle((float)x, rowY, (float)(x + w), rowY + rowH,
+					al_map_rgba(60, 50, 20, 220));
+				al_draw_filled_rectangle((float)x, rowY, (float)x + 3, rowY + rowH,
+					al_map_rgb(200, 170, 60));
+			}
+			else if (bAltRow)
+			{
+				al_draw_filled_rectangle((float)x, rowY, (float)(x + w), rowY + rowH,
+					al_map_rgba(20, 20, 25, 180));
+			}
+			else
+			{
+				al_draw_filled_rectangle((float)x, rowY, (float)(x + w), rowY + rowH,
+					al_map_rgba(12, 12, 16, 180));
+			}
+
+			char tmp[64];
+			float textY = rowY + (rowH - al_get_font_line_height(s_pListFont)) / 2.0f;
+
+			// Row text color
+			ALLEGRO_COLOR nameColor;
+			if (entry->IsHardcore())
+				nameColor = al_map_rgb(255, 80, 80);
+			else if (entry->HasTitle())
+				nameColor = al_map_rgb(200, 170, 60);
+			else
+				nameColor = al_map_rgb(220, 220, 220);
+
+			// TITLE
+			if (entry->HasTitle())
+			{
+				ToNarrow(entry->GetTitle(), tmp, sizeof(tmp));
+				al_draw_text(s_pListFont, nameColor, (float)(x + COL_TITLE), textY, ALLEGRO_ALIGN_LEFT, tmp);
+			}
+
+			// NAME (faux-bold)
+			char nameStr[64];
+			ToNarrow(entry->GetName(), nameStr, sizeof(nameStr));
+			al_draw_text(s_pListFont, nameColor, (float)(x + COL_NAME), textY, ALLEGRO_ALIGN_LEFT, nameStr);
+			al_draw_text(s_pListFont, nameColor, (float)(x + COL_NAME + 1), textY, ALLEGRO_ALIGN_LEFT, nameStr);
+
+			// LEVEL + CLASS
+			char classAndLevel[64];
+			ToNarrow(entry->GetClassAndLevel(), classAndLevel, sizeof(classAndLevel));
+
+			char levelStr[16] = "";
+			char classStr[32] = "";
+			int lvl = 0;
+			char clsName[32] = "";
+			if (sscanf(classAndLevel, "Level %d %31[^\n]", &lvl, clsName) == 2)
+			{
+				snprintf(levelStr, sizeof(levelStr), "%d", lvl);
+				snprintf(classStr, sizeof(classStr), "%s", clsName);
+			}
+			else
+			{
+				snprintf(classStr, sizeof(classStr), "%s", classAndLevel);
+			}
+
+			al_draw_text(s_pListFont, al_map_rgb(180, 180, 180),
+				(float)(x + COL_LEVEL), textY, ALLEGRO_ALIGN_LEFT, levelStr);
+			al_draw_text(s_pListFont, al_map_rgb(180, 180, 180),
+				(float)(x + COL_CLASS), textY, ALLEGRO_ALIGN_LEFT, classStr);
+
+			// DIFFICULTY
+			char diffCol[32];
+			ToNarrow(entry->GetDifficulty(), diffCol, sizeof(diffCol));
+
+			ALLEGRO_COLOR diffColor;
+			if (strcmp(diffCol, "Hell") == 0)
+				diffColor = al_map_rgb(255, 100, 100);
+			else if (strcmp(diffCol, "Nightmare") == 0)
+				diffColor = al_map_rgb(200, 170, 60);
+			else
+				diffColor = al_map_rgb(140, 140, 140);
+
+			al_draw_text(s_pListFont, diffColor,
+				(float)(x + COL_DIFF), textY, ALLEGRO_ALIGN_LEFT, diffCol);
+		}
+
+		// Scroll indicators
 		if (nCurrentScroll > 0)
 		{
-			scrollUpArrow->Draw();
+			al_draw_text(s_pListFont, al_map_rgb(200, 170, 60),
+				(float)(x + w / 2), panelTop + 4, ALLEGRO_ALIGN_CENTER, "^ More Above ^");
 		}
-		if (nCurrentScroll + D2_NUM_VISIBLE_SAVES < nNumberSaves)
+		if (nCurrentScroll + visibleRows < nNumberSaves)
 		{
-			scrollDownArrow->Draw();
+			al_draw_text(s_pListFont, al_map_rgb(200, 170, 60),
+				(float)(x + w / 2), (float)(y + listH) + 4, ALLEGRO_ALIGN_CENTER, "v More Below v");
 		}
 	}
-	/*
-	 *	Returns the name of the currently selected character.
-	 *	@author	eezstreet
-	 */
+
 	char16_t *CharSelectList::GetSelectedCharacterName()
 	{
+		if (nCurrentSelection >= 0 && nCurrentSelection < (int)sortedSaves.size())
+			return sortedSaves[nCurrentSelection]->GetSelectedCharacterName();
 		if (saves)
-		{
 			return saves->GetSelectedCharacterName();
-		}
-
 		return u"";
 	}
 
-	/*
-	 *	Handles a mouse-down event on a CharSelectList widget.
-	 */
 	bool CharSelectList::HandleMouseDown(DWORD dwX, DWORD dwY)
 	{
-		if (dwX >= x && dwX <= x + w && dwY >= y && dwY <= y + h)
-		{
+		// Include header row in clickable area
+		int headerTop = y - D2_ROW_HEIGHT;
+		if ((int)dwX >= x && (int)dwX <= x + w && (int)dwY >= headerTop && (int)dwY <= y + h)
 			return true;
-		}
 		return false;
 	}
 
-	/*
-	 *	Handles a mouse click event on a CharSelectList widget.
-	 */
 	bool CharSelectList::HandleMouseClick(DWORD dwX, DWORD dwY)
 	{
-		if (dwX >= x && dwX <= x + w && dwY >= y && dwY <= y + h)
+		int headerTop = y - D2_ROW_HEIGHT;
+
+		if ((int)dwX < x || (int)dwX > x + w)
+			return false;
+
+		// Click on header row → sort
+		if ((int)dwY >= headerTop && (int)dwY < y)
+		{
+			HeaderClicked((DWORD)((int)dwX - x));
+			return true;
+		}
+
+		// Click on footer row → sort (same behavior)
+		int footerTop = y + (D2_NUM_VISIBLE_SAVES * D2_ROW_HEIGHT);
+		if ((int)dwY >= footerTop && (int)dwY < footerTop + D2_ROW_HEIGHT)
+		{
+			HeaderClicked((DWORD)((int)dwX - x));
+			return true;
+		}
+
+		// Click on data rows
+		if ((int)dwY >= y && (int)dwY <= y + h)
 		{
 			Clicked(dwX - x, dwY - y);
 			return true;
 		}
+
 		return false;
 	}
 
-	/*
-	 *	Handles a click in a relative area
-	 *	@author	eezstreet
-	 */
 	void CharSelectList::Clicked(DWORD dwX, DWORD dwY)
 	{
-		bool bClickedRight = dwX > (w / 2);
-		int nClickY = dwY / (h / 4);
-		int nClickSlot = (nClickY * 2) + bClickedRight;
-		int nNewSelection = nClickSlot + nCurrentScroll;
+		int clickedRow = (int)dwY / D2_ROW_HEIGHT;
+		int nNewSelection = clickedRow + nCurrentScroll;
 
 		if (nNewSelection >= nNumberSaves)
-		{
 			nNewSelection = -1;
-		}
 
-		// Double-click detection: same char selected within 500ms
+		// Double-click detection
 		DWORD dwNow = engine->Milliseconds();
 		if (nNewSelection != -1 && nNewSelection == nLastClickedSelection &&
 			(dwNow - dwLastClickTick) < 500)
 		{
-			// Double-click — enter the game
 			EnterGame();
 			return;
 		}
@@ -187,150 +434,100 @@ namespace D2Widgets
 		Selected(nCurrentSelection);
 	}
 
-	/*
-	 *	A new character slot was selected.
-	 *	nNewSelection is an absolute index into the character list (not scroll-relative).
-	 */
 	void CharSelectList::Selected(int nNewSelection)
 	{
-		if (nNewSelection < 0 || nNewSelection >= nNumberSaves || saves == nullptr)
-		{
+		if (nNewSelection < 0 || nNewSelection >= nNumberSaves)
 			nNewSelection = -1;
-		}
 
-		if (saves != nullptr)
-		{
-			saves->DeselectAllInChain();
-		}
+		// Deselect all
+		for (auto *s : sortedSaves)
+			s->SetSelected(false);
 
 		nCurrentSelection = nNewSelection;
 
 		if (nNewSelection == -1)
 		{
-			// Grey out the "OK", "Delete Character" and "Convert to Expansion" buttons
 			dynamic_cast<D2Panels::CharSelect *>(m_pOwner)->InvalidateSelection();
-			topName->SetText(u"");
 		}
 		else
 		{
 			dynamic_cast<D2Panels::CharSelect *>(m_pOwner)->ValidateSelection();
-			if (saves != nullptr)
-			{
-				saves->Select(nCurrentSelection);
-				topName->SetText(saves->GetSelectedCharacterName());
-			}
+			if (nNewSelection < (int)sortedSaves.size())
+				sortedSaves[nNewSelection]->SetSelected(true);
 		}
 	}
 
-	/*
-	 *	We need to load up the selected save.
-	 *	@author	eezstreet
-	 */
 	void CharSelectList::LoadSave()
 	{
-		CharacterSaveData *pCurrent;
-
-		if (nCurrentSelection == -1)
-		{
+		if (nCurrentSelection < 0 || nCurrentSelection >= (int)sortedSaves.size())
 			return;
-		}
 
-		// Advance nCurrentSelection times through the linked list
-		pCurrent = pCharacterData;
+		// The saves linked list still holds the path data — but we can get it from sortedSaves too
+		// For now, use the linked list via pCharacterData
+		CharacterSaveData *pCurrent = pCharacterData;
 		for (int i = 0; i < nCurrentSelection && pCurrent != nullptr; i++, pCurrent = pCurrent->pNext)
 			;
 
 		if (pCurrent == nullptr)
-		{ // invalid selection
 			return;
-		}
 
 		memcpy(&cl.currentSave.header, &pCurrent->header, sizeof(pCurrent->header));
 		D2Lib::strncpyz(cl.szCurrentSave, pCurrent->path, MAX_D2PATH_ABSOLUTE);
 
-		// Parse the full save file (stats, skills, items) into extended data
 		D2Client_ParseFullSave(pCurrent->path);
 	}
 
-	/*
-	 *	Scroll the character list up by 2 (one row in 2-column grid).
-	 */
 	void CharSelectList::ScrollUp()
 	{
-		if (nCurrentScroll >= 2)
-		{
-			nCurrentScroll -= 2;
-		}
-		else
-		{
-			nCurrentScroll = 0;
-		}
+		if (nCurrentScroll > 0)
+			nCurrentScroll--;
 	}
 
-	/*
-	 *	Scroll the character list down by 2 (one row in 2-column grid).
-	 */
 	void CharSelectList::ScrollDown()
 	{
 		if (nCurrentScroll + D2_NUM_VISIBLE_SAVES < nNumberSaves)
-		{
-			nCurrentScroll += 2;
-			// Clamp so we don't scroll past the end
-			if (nCurrentScroll + D2_NUM_VISIBLE_SAVES > nNumberSaves)
-			{
-				nCurrentScroll = nNumberSaves - D2_NUM_VISIBLE_SAVES;
-				if (nCurrentScroll < 0)
-					nCurrentScroll = 0;
-			}
-		}
+			nCurrentScroll++;
 	}
 
-	/*
-	 *	Ensure the current selection is visible in the scroll window.
-	 */
 	void CharSelectList::EnsureSelectionVisible()
 	{
 		if (nCurrentSelection < 0)
 			return;
 
-		// If selection is above the visible window, scroll up
 		if (nCurrentSelection < nCurrentScroll)
-		{
-			// Align scroll to the row containing the selection (even index)
-			nCurrentScroll = nCurrentSelection & ~1;
-		}
-		// If selection is below the visible window, scroll down
+			nCurrentScroll = nCurrentSelection;
 		else if (nCurrentSelection >= nCurrentScroll + D2_NUM_VISIBLE_SAVES)
-		{
-			nCurrentScroll = (nCurrentSelection & ~1) - D2_NUM_VISIBLE_SAVES + 2;
-			if (nCurrentScroll < 0)
-				nCurrentScroll = 0;
-		}
+			nCurrentScroll = nCurrentSelection - D2_NUM_VISIBLE_SAVES + 1;
 	}
 
-	/*
-	 *	Transition to the game with the currently selected character.
-	 */
 	void CharSelectList::EnterGame()
 	{
 		if (nCurrentSelection < 0 || nCurrentSelection >= nNumberSaves)
 			return;
 
-		// Delegate to the menu's CharacterChosen which handles save assignment + loading transition
 		D2Menus::CharSelect *menu = dynamic_cast<D2Menus::CharSelect *>(cl.pActiveMenu);
 		if (menu != nullptr)
-		{
 			menu->CharacterChosen();
-		}
 	}
 
-	/*
-	 *	Handle keyboard navigation in the 2-column character grid.
-	 *	Matches original D2Launch.dll behavior:
-	 *	  Left/Right: move between columns (parity check)
-	 *	  Up/Down: move by 2 (previous/next row)
-	 *	  Home/End: jump to first/last character
-	 */
+	bool CharSelectList::HandleMouseWheel(int delta)
+	{
+		if (nNumberSaves <= D2_NUM_VISIBLE_SAVES)
+			return false;
+
+		if (delta > 0)
+		{
+			for (int i = 0; i < delta && nCurrentScroll > 0; i++)
+				nCurrentScroll--;
+		}
+		else if (delta < 0)
+		{
+			for (int i = 0; i < -delta && nCurrentScroll + D2_NUM_VISIBLE_SAVES < nNumberSaves; i++)
+				nCurrentScroll++;
+		}
+		return true;
+	}
+
 	bool CharSelectList::HandleKeyDown(DWORD dwKey)
 	{
 		if (nNumberSaves <= 0)
@@ -340,37 +537,18 @@ namespace D2Widgets
 
 		switch (dwKey)
 		{
-		case B_LEFTARROW:
-			// Move left only if current index is odd (right column)
-			if (nCurrentSelection > 0 && (nCurrentSelection & 1) != 0)
-			{
-				nCurrentSelection--;
-			}
-			break;
-
-		case B_RIGHTARROW:
-			// Move right only if current index is even (left column) and next exists
-			if (nCurrentSelection >= 0 && (nCurrentSelection & 1) == 0 &&
-				nCurrentSelection + 1 < nNumberSaves)
-			{
-				nCurrentSelection++;
-			}
-			break;
-
 		case B_UPARROW:
-			// Move up one row (subtract 2)
-			if (nCurrentSelection >= 2)
-			{
-				nCurrentSelection -= 2;
-			}
+			if (nCurrentSelection > 0)
+				nCurrentSelection--;
+			else if (nCurrentSelection < 0 && nNumberSaves > 0)
+				nCurrentSelection = 0;
 			break;
 
 		case B_DOWNARROW:
-			// Move down one row (add 2)
-			if (nCurrentSelection >= 0 && nCurrentSelection + 2 < nNumberSaves)
-			{
-				nCurrentSelection += 2;
-			}
+			if (nCurrentSelection >= 0 && nCurrentSelection + 1 < nNumberSaves)
+				nCurrentSelection++;
+			else if (nCurrentSelection < 0 && nNumberSaves > 0)
+				nCurrentSelection = 0;
 			break;
 
 		case B_HOME:
@@ -380,6 +558,18 @@ namespace D2Widgets
 
 		case B_END:
 			nCurrentSelection = nNumberSaves - 1;
+			break;
+
+		case B_PAGEUP:
+			nCurrentSelection -= D2_NUM_VISIBLE_SAVES;
+			if (nCurrentSelection < 0)
+				nCurrentSelection = 0;
+			break;
+
+		case B_PAGEDOWN:
+			nCurrentSelection += D2_NUM_VISIBLE_SAVES;
+			if (nCurrentSelection >= nNumberSaves)
+				nCurrentSelection = nNumberSaves - 1;
 			break;
 
 		default:

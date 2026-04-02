@@ -3,6 +3,7 @@
 #include "MapRenderer.hpp"
 #include "UI/Menus/Trademark.hpp"
 #include "UI/Menus/Main.hpp"
+#include "UI/Menus/Debug.hpp"
 #include "UI/Menus/TCPIP.hpp"
 #include "UI/Menus/Ingame.hpp"
 #include "Game/D2Game.hpp"
@@ -283,6 +284,10 @@ static void D2Client_HandleInput()
 			break;
 
 		case IN_MOUSEWHEEL:
+			if (cl.pActiveMenu != nullptr)
+			{
+				cl.pActiveMenu->HandleMouseWheel(pCmd->cmdData.motion.y);
+			}
 			break;
 
 		case IN_QUIT:
@@ -542,10 +547,20 @@ static void D2Client_RunClientFrame()
 	}
 	else if (gpMapSelector != nullptr && !gpMapSelector->IsActive() && !gpMapSelector->HasSelection())
 	{
-		// User pressed Escape - exit
+		// User pressed Escape — go back to Debug menu or exit if launched via +mapviewer
 		delete gpMapSelector;
 		gpMapSelector = nullptr;
-		cl.bKillGame = true;
+
+		if (openConfig->bMapViewer)
+		{
+			cl.bKillGame = true;
+		}
+		else
+		{
+			openConfig->currentGameMode = OpenD2GameModes::Menu;
+			cl.gamestate = GS_MAINMENU;
+			cl.pActiveMenu = new D2Menus::Debug();
+		}
 		goto frame_end;
 	}
 

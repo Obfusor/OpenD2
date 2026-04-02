@@ -260,6 +260,25 @@ bool D2Panel::HandleKeyUp(DWORD dwKey)
 }
 
 /*
+ *	Handle a mouse wheel event
+ */
+bool D2Panel::HandleMouseWheel(int delta)
+{
+	D2Widget* pCurrent;
+
+	pCurrent = m_visibleWidgets;
+	while (pCurrent != nullptr)
+	{
+		if (pCurrent->HandleMouseWheel(delta))
+		{
+			return true;
+		}
+		pCurrent = pCurrent->m_pNextVisibleWidget;
+	}
+	return false;
+}
+
+/*
  *	Handle a text input event
  */
 bool D2Panel::HandleTextInput(char* szText)

@@ -17,7 +17,6 @@ namespace D2Panels
 		D2Widgets::Button* exitButton;
 		D2Widgets::CharSelectList* charSelectList;
 
-		IRenderObject* characterDisplayName;
 	public:
 		CharSelect();
 		virtual ~CharSelect();
@@ -40,7 +39,7 @@ namespace D2Panels
 		D2Widgets::Button* confirmNoButton;
 
 		IRenderObject* renderObject;
-		tex_handle					background;
+		tex_handle background;
 
 	public:
 		CharDeleteConfirm();

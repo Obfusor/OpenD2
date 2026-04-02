@@ -51,6 +51,7 @@ public:
 	virtual bool HandleKeyDown(DWORD dwKey);
 	virtual bool HandleTextInput(char *szText);
 	virtual bool HandleTextEditing(char *szText, int nStart, int nLength);
+	virtual bool HandleMouseWheel(int delta);
 	virtual void Draw() = 0;
 	virtual void Tick(DWORD dwDeltaMs);
 
