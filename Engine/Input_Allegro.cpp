@@ -22,14 +22,13 @@ namespace IN
 
 	/*
 	 *	Maps Allegro key codes to D2InputButton values.
-	 *	D2InputButton uses SDL scancode values, so we translate Allegro keys
-	 *	to match the existing modcode expectations.
+	 *	These values match the D2InputButton enum in D2Shared.hpp.
 	 */
 	static inline DWORD MapAllegroKey(int allegroKey)
 	{
 		switch (allegroKey)
 		{
-		// Arrow keys (SDL values)
+		// Arrow keys
 		case ALLEGRO_KEY_RIGHT:    return 1073741903; // B_RIGHTARROW
 		case ALLEGRO_KEY_LEFT:     return 1073741904; // B_LEFTARROW
 		case ALLEGRO_KEY_DOWN:     return 1073741905; // B_DOWNARROW
@@ -45,12 +44,12 @@ namespace IN
 		case ALLEGRO_KEY_BACKSPACE: return '\b';      // B_BACKSPACE
 
 		// Special keys
-		case ALLEGRO_KEY_ESCAPE:   return 27;   // SDLK_ESCAPE
+		case ALLEGRO_KEY_ESCAPE:   return 27;
 		case ALLEGRO_KEY_TAB:      return '\t';
 		case ALLEGRO_KEY_ENTER:    return '\r';
 		case ALLEGRO_KEY_SPACE:    return ' ';
 
-		// Function keys (SDL values: F1=1073741882)
+		// Function keys
 		case ALLEGRO_KEY_F1:  return 1073741882;
 		case ALLEGRO_KEY_F2:  return 1073741883;
 		case ALLEGRO_KEY_F3:  return 1073741884;
@@ -64,7 +63,7 @@ namespace IN
 		case ALLEGRO_KEY_F11: return 1073741892;
 		case ALLEGRO_KEY_F12: return 1073741893;
 
-		// Modifier keys (SDL values)
+		// Modifier keys
 		case ALLEGRO_KEY_LSHIFT:  return 1073742049;
 		case ALLEGRO_KEY_RSHIFT:  return 1073742053;
 		case ALLEGRO_KEY_LCTRL:   return 1073742048;
@@ -72,7 +71,7 @@ namespace IN
 		case ALLEGRO_KEY_ALT:     return 1073742050;
 		case ALLEGRO_KEY_ALTGR:   return 1073742054;
 
-		// Letters (SDL uses lowercase ASCII)
+		// Letters (lowercase ASCII)
 		case ALLEGRO_KEY_A: return 'a';
 		case ALLEGRO_KEY_B: return 'b';
 		case ALLEGRO_KEY_C: return 'c';
@@ -305,7 +304,7 @@ namespace IN
 
 			case ALLEGRO_EVENT_KEY_CHAR:
 				// Allegro fires KEY_CHAR with unicode character data
-				// This replaces SDL_TEXTINPUT when text editing is active
+				// Allegro text input event — fires when text editing is active
 				if (bTextEditingActive && ev.keyboard.unichar > 0 && ev.keyboard.unichar < 0x10000)
 				{
 					if (gdwNumProcessedCommands < MAX_INPUT_COMMANDS)

@@ -36,6 +36,6 @@
 #endif
 #endif
 
-// Message box type constants (matching SDL values for source compatibility)
+// Message box type constants
 #define D2_MESSAGEBOX_WARNING    0x00000020
 #define D2_MESSAGEBOX_ERROR      0x00000010

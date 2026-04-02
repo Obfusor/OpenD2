@@ -87,7 +87,7 @@ D2CmdArgStrc OpenD2CommandArguments[] = {
 	{"FILEIO", "BASEPATH", "basepath", CMD_STRING, co(szBasePath), MAX_D2PATH_ABSOLUTE},
 	{"FILEIO", "HOMEPATH", "homepath", CMD_STRING, co(szHomePath), MAX_D2PATH_ABSOLUTE},
 	{"FILEIO", "MODPATH", "modpath", CMD_STRING, co(szModPath), MAX_D2PATH_ABSOLUTE},
-	{"VIDEO", "SDLNOACCEL", "sdlnoaccel", CMD_BOOLEAN, co(bNoSDLAccel), 0x00},
+	{"VIDEO", "NOACCEL", "noaccel", CMD_BOOLEAN, co(bNoAccel), 0x00},
 	{"VIDEO", "BORDERLESS", "borderless", CMD_BOOLEAN, co(bBorderless), 0x00},
 	{"VIDEO", "NORENDERTEXT", "norendertext", CMD_BOOLEAN, co(bNoRenderText), 0x00},
 	{"FILEIO", "LOGFLAGS", "logflags", CMD_DWORD, co(dwLogFlags), PRIORITY_ALL},

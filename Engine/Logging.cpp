@@ -6,11 +6,6 @@
 #include <time.h>
 #include <cstdio>
 
-// Message box type constants
-#ifndef SDL_MESSAGEBOX_WARNING
-#define SDL_MESSAGEBOX_WARNING   D2_MESSAGEBOX_WARNING
-#define SDL_MESSAGEBOX_ERROR     D2_MESSAGEBOX_ERROR
-#endif
 
 ///////////////////////////////////////////////////////////
 //
@@ -161,7 +156,7 @@ namespace Log
 			NL "Assertion Failure!" NL
 			"File: %s" NL
 			"Line: %i" NL "Code: %s", szFile, nLine, szCondition);
-		Window::ShowMessageBox(SDL_MESSAGEBOX_WARNING, GAME_NAME " Warning", szWarningMessage);
+		Window::ShowMessageBox(D2_MESSAGEBOX_WARNING, GAME_NAME " Warning", szWarningMessage);
 		Print(PRIORITY_MESSAGE, szWarningMessage);
 	}
 
@@ -174,7 +169,7 @@ namespace Log
 		vsnprintf(buffer, sizeof(buffer), format, args);
 		va_end(args);
 
-		Window::ShowMessageBox(SDL_MESSAGEBOX_WARNING, GAME_NAME " Warning", buffer);
+		Window::ShowMessageBox(D2_MESSAGEBOX_WARNING, GAME_NAME " Warning", buffer);
 		Print(PRIORITY_MESSAGE, buffer);
 	}
 
@@ -189,7 +184,7 @@ namespace Log
 			NL "Fatal Assertion Failure!" NL
 			"File: %s" NL
 			"Line: %i" NL "Code: %s", szFile, nLine, szCondition);
-		Window::ShowMessageBox(SDL_MESSAGEBOX_ERROR, GAME_NAME " Error", szErrorMessage);
+		Window::ShowMessageBox(D2_MESSAGEBOX_ERROR, GAME_NAME " Error", szErrorMessage);
 		Print(PRIORITY_CRASH, szErrorMessage);
 
 		// pull us out of the main game loop
@@ -207,7 +202,7 @@ namespace Log
 		vsnprintf(buffer, sizeof(buffer), format, args);
 		va_end(args);
 
-		Window::ShowMessageBox(SDL_MESSAGEBOX_ERROR, GAME_NAME " Error", buffer);
+		Window::ShowMessageBox(D2_MESSAGEBOX_ERROR, GAME_NAME " Error", buffer);
 		Print(PRIORITY_CRASH, buffer);
 
 		// pull us out of the main game loop

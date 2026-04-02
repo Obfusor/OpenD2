@@ -233,7 +233,7 @@ enum D2WindowEventType
 	WINDOWEVENT_HIT_TEST
 };
 
-// This is a direct mapping of the SDL scancodes, with a few extra things thrown in
+// Input button codes (Allegro keys mapped to these values in Input_Allegro.cpp)
 enum D2InputButton
 {
 	B_MOUSE1 = 0, // left mouse
@@ -649,7 +649,7 @@ struct OpenD2ConfigStrc
 	char szHomePath[MAX_D2PATH_ABSOLUTE];
 	char szModPath[MAX_D2PATH_ABSOLUTE];
 
-	BYTE bNoSDLAccel;
+	BYTE bNoAccel;
 	BYTE bBorderless;
 	BYTE bNoRenderText;
 	DWORD dwLogFlags;

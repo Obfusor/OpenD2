@@ -21,7 +21,7 @@ struct TBLFontGlyph
 	WORD			wUnknown3;
 	BYTE			nImageIndex;
 	BYTE			nChar;		// ANSI character code
-	DWORD			dwUnknown4;	// NOTE: on SDL renderer this gets set to the X offset of the glyph on atlas
+	DWORD			dwUnknown4;	// X offset of the glyph on atlas (set during atlassing)
 };
 
 struct TBLFontFile
