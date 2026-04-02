@@ -153,9 +153,13 @@ static void D2Client_HandleInput()
 			}
 			else if (pCmd->cmdType == IN_MOUSEDOWN)
 			{
-				// Mouse position already tracked via MOUSEMOVE
 				if (gpMapSelector->HandleMouseDown(cl.dwMouseX, cl.dwMouseY))
 					continue;
+			}
+			else if (pCmd->cmdType == IN_MOUSEUP)
+			{
+				gpMapSelector->HandleMouseUp(cl.dwMouseX, cl.dwMouseY);
+				continue;
 			}
 			else if (pCmd->cmdType == IN_MOUSEWHEEL)
 			{

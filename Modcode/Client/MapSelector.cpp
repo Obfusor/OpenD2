@@ -58,7 +58,7 @@ MapSelector *gpMapSelector = nullptr;
 MapSelector::MapSelector()
 	: m_selectedIndex(0), m_scrollOffset(0), m_visibleRows(35),
 	  m_hoverIndex(-1), m_mouseX(0), m_mouseY(0),
-	  m_bActive(true), m_bSelectionMade(false),
+	  m_bActive(true), m_bSelectionMade(false), m_bDraggingScrollbar(false),
 	  m_previewDS1(INVALID_HANDLE), m_previewWidth(0), m_previewHeight(0),
 	  m_lastPreviewIndex(-1)
 {
@@ -353,13 +353,33 @@ bool MapSelector::HandleMouseDown(DWORD x, DWORD y)
 	if (!m_bActive)
 		return false;
 
-	// Check if click is in the file list area
-	if ((int)x >= LIST_X && (int)x <= LIST_X + LIST_W &&
+	int numFiles = (int)m_files.size();
+	int scrollbarX = LIST_X + LIST_W - 12;
+	float scrollTrackH = (float)(m_visibleRows * ROW_H);
+
+	// Check if click is on the scrollbar
+	if (numFiles > m_visibleRows &&
+		(int)x >= scrollbarX && (int)x <= LIST_X + LIST_W &&
+		(int)y >= LIST_Y && (int)y <= LIST_Y + (int)scrollTrackH)
+	{
+		m_bDraggingScrollbar = true;
+
+		// Jump scrollbar to click position
+		float clickRatio = ((float)y - (float)LIST_Y) / scrollTrackH;
+		m_scrollOffset = (int)(clickRatio * (float)(numFiles - m_visibleRows));
+		if (m_scrollOffset < 0) m_scrollOffset = 0;
+		if (m_scrollOffset > numFiles - m_visibleRows) m_scrollOffset = numFiles - m_visibleRows;
+
+		return true;
+	}
+
+	// Check if click is in the file list area (excluding scrollbar)
+	if ((int)x >= LIST_X && (int)x < scrollbarX &&
 		(int)y >= LIST_Y && (int)y <= LIST_Y + m_visibleRows * ROW_H)
 	{
 		int clickedRow = ((int)y - LIST_Y) / ROW_H;
 		int clickedIndex = m_scrollOffset + clickedRow;
-		if (clickedIndex >= 0 && clickedIndex < (int)m_files.size())
+		if (clickedIndex >= 0 && clickedIndex < numFiles)
 		{
 			if (m_selectedIndex == clickedIndex)
 			{
@@ -379,13 +399,38 @@ bool MapSelector::HandleMouseDown(DWORD x, DWORD y)
 	return false;
 }
 
+void MapSelector::HandleMouseUp(DWORD x, DWORD y)
+{
+	(void)x; (void)y;
+	m_bDraggingScrollbar = false;
+}
+
 void MapSelector::HandleMouseMove(DWORD x, DWORD y)
 {
 	m_mouseX = x;
 	m_mouseY = y;
 
+	// Handle scrollbar dragging
+	if (m_bDraggingScrollbar)
+	{
+		int numFiles = (int)m_files.size();
+		if (numFiles > m_visibleRows)
+		{
+			float scrollTrackH = (float)(m_visibleRows * ROW_H);
+			float dragRatio = ((float)y - (float)LIST_Y) / scrollTrackH;
+			if (dragRatio < 0.0f) dragRatio = 0.0f;
+			if (dragRatio > 1.0f) dragRatio = 1.0f;
+
+			m_scrollOffset = (int)(dragRatio * (float)(numFiles - m_visibleRows));
+			if (m_scrollOffset < 0) m_scrollOffset = 0;
+			if (m_scrollOffset > numFiles - m_visibleRows) m_scrollOffset = numFiles - m_visibleRows;
+		}
+		return;
+	}
+
 	// Update hover index if mouse is over the file list
-	if ((int)x >= LIST_X && (int)x <= LIST_X + LIST_W &&
+	int scrollbarX = LIST_X + LIST_W - 12;
+	if ((int)x >= LIST_X && (int)x < scrollbarX &&
 		(int)y >= LIST_Y && (int)y <= LIST_Y + m_visibleRows * ROW_H)
 	{
 		int hoveredRow = ((int)y - LIST_Y) / ROW_H;
@@ -536,23 +581,34 @@ void MapSelector::DrawFileList()
 #endif
 	}
 
-	// Draw scrollbar
+	// Draw scrollbar (12px wide to match hit area)
 	if (numFiles > m_visibleRows)
 	{
-		float scrollBg[] = {0.15f, 0.15f, 0.15f, 1.0f};
+		float scrollBarW = 12.0f;
+		float scrollBarX = (float)(LIST_X + LIST_W) - scrollBarW;
 		float scrollTrackH = (float)(m_visibleRows * ROW_H);
-		engine->renderer->DrawRectangle((float)(LIST_X + LIST_W - 8), (float)LIST_Y,
-			8, scrollTrackH, 0, nullptr, scrollBg);
 
+		// Track background
+		float scrollBg[] = {0.12f, 0.12f, 0.12f, 1.0f};
+		engine->renderer->DrawRectangle(scrollBarX, (float)LIST_Y,
+			scrollBarW, scrollTrackH, 0, nullptr, scrollBg);
+
+		// Thumb
 		float thumbRatio = (float)m_visibleRows / (float)numFiles;
 		float thumbH = scrollTrackH * thumbRatio;
-		if (thumbH < 20)
-			thumbH = 20;
-		float thumbY = (float)LIST_Y + (scrollTrackH - thumbH) * ((float)m_scrollOffset / (float)(numFiles - m_visibleRows));
+		if (thumbH < 24) thumbH = 24;
+		float thumbY = (float)LIST_Y + (scrollTrackH - thumbH) *
+			((float)m_scrollOffset / (float)(numFiles - m_visibleRows));
 
 		float thumbColor[] = {0.5f, 0.4f, 0.25f, 1.0f};
-		engine->renderer->DrawRectangle((float)(LIST_X + LIST_W - 8), thumbY,
-			8, thumbH, 0, nullptr, thumbColor);
+		if (m_bDraggingScrollbar)
+		{
+			thumbColor[0] = 0.8f;
+			thumbColor[1] = 0.65f;
+			thumbColor[2] = 0.3f;
+		}
+		engine->renderer->DrawRectangle(scrollBarX + 1, thumbY + 1,
+			scrollBarW - 2, thumbH - 2, 0, nullptr, thumbColor);
 	}
 }
 

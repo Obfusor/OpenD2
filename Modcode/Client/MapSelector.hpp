@@ -36,6 +36,7 @@ public:
 	void Draw();
 	bool HandleKeyDown(DWORD keyCode);
 	bool HandleMouseDown(DWORD x, DWORD y);
+	void HandleMouseUp(DWORD x, DWORD y);
 	void HandleMouseMove(DWORD x, DWORD y);
 	void HandleMouseWheel(int delta);
 
@@ -60,6 +61,7 @@ private:
 	DWORD m_mouseX, m_mouseY;
 	bool m_bActive;
 	bool m_bSelectionMade;
+	bool m_bDraggingScrollbar;
 
 	// Preview state
 	handle m_previewDS1;
