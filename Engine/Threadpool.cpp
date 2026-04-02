@@ -1,4 +1,7 @@
 #include "Diablo2.hpp"
+#ifndef USE_ALLEGRO5
+// Threadpool uses SDL threads. When USE_ALLEGRO5 is defined, this file is excluded
+// from the build. Threadpool is currently disabled anyway (commented out in diablo2.cpp).
 #include "Threadpool.hpp"
 
 #define	THREADPOOL_SIZE	10
@@ -174,3 +177,4 @@ namespace Threadpool
 		SDL_DestroyMutex(gpJobQueueMutex);
 	}
 }
+#endif // !USE_ALLEGRO5

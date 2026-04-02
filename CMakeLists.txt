@@ -42,6 +42,9 @@ if(BUILD_GAME)
 		list(REMOVE_ITEM ENGINE_SRC
 			${CMAKE_CURRENT_SOURCE_DIR}/Engine/Renderer_GL.cpp
 			${CMAKE_CURRENT_SOURCE_DIR}/Engine/Renderer_SDL.cpp
+			${CMAKE_CURRENT_SOURCE_DIR}/Engine/Window.cpp
+			${CMAKE_CURRENT_SOURCE_DIR}/Engine/Input.cpp
+			${CMAKE_CURRENT_SOURCE_DIR}/Engine/Audio_SDL.cpp
 		)
 
 		# Build EditorLib - the editor's C rendering code as a static library
@@ -84,7 +87,6 @@ if(BUILD_GAME)
 				"${ALLEGRO5_LIB_DIR}/allegro_primitives.lib"
 				"${ALLEGRO5_LIB_DIR}/allegro_audio.lib"
 				"${ALLEGRO5_LIB_DIR}/allegro_acodec.lib"
-				"${ALLEGRO5_LIB_DIR}/allegro_main.lib"
 			)
 
 			# Compression libraries (already in engine)
@@ -116,7 +118,7 @@ if(BUILD_GAME)
 		set_target_properties(game PROPERTIES OUTPUT_NAME game)
 		set_target_properties(game PROPERTIES LINKER_LANGUAGE CXX)
 
-		target_compile_definitions(game PUBLIC D2EXE USE_ALLEGRO5)
+		target_compile_definitions(game PUBLIC D2EXE USE_ALLEGRO5 ALLEGRO_NO_MAGIC_MAIN)
 		if(ENABLE_EDITOR)
 			target_compile_definitions(game PUBLIC ENABLE_EDITOR)
 			target_compile_definitions(EditorLib PRIVATE ENABLE_EDITOR)

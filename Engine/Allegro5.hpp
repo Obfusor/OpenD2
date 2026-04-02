@@ -38,4 +38,8 @@
 #endif
 #endif
 
+// Message box type constants (matching SDL values for source compatibility)
+#define D2_MESSAGEBOX_WARNING    0x00000020
+#define D2_MESSAGEBOX_ERROR      0x00000010
+
 #endif // USE_ALLEGRO5

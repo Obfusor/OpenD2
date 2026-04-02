@@ -1,5 +1,9 @@
 #include "Renderer.hpp"
+#ifdef USE_ALLEGRO5
+#include "Renderer_Allegro.hpp"
+#else
 #include "Renderer_GL.hpp"
+#endif
 #include "Palette.hpp"
 #include "DCC.hpp"
 
@@ -7,22 +11,28 @@
  *	The renderer in OpenD2 is significantly different from the one in retail Diablo 2.
  *
  *	For starters, the window management and rendering are totally separated.
- *	There are two main render targets that we want to work with:
- *	- SDL
- *	- OpenGL
- *
  *	The render target can be changed in D2.ini, registry, or commandline.
- *	Later on we will want to create a VideoTest.exe that can be used to set optimal video settings.
- *	(by default we will use software since it works on literally everything)
  */
 
 IRenderer* RenderTarget = nullptr;
 
 namespace Renderer
 {
+#ifdef USE_ALLEGRO5
 	/*
-	 *	Initializes the renderer.
-	 *	Call after the window has been created.
+	 *	Initializes the Allegro 5 renderer.
+	 */
+	void Init(D2GameConfigStrc* pConfig, OpenD2ConfigStrc* pOpenConfig, ALLEGRO_DISPLAY* pDisplay)
+	{
+		// Load palettes
+		Pal::Init();
+		DCC::GlobalInit();
+
+		RenderTarget = new Renderer_Allegro(pConfig, pOpenConfig, pDisplay);
+	}
+#else
+	/*
+	 *	Initializes the SDL/OpenGL renderer.
 	 */
 	void Init(D2GameConfigStrc* pConfig, OpenD2ConfigStrc* pOpenConfig, SDL_Window* pWindow)
 	{
@@ -55,10 +65,10 @@ namespace Renderer
 #endif
 		}
 	}
+#endif
 
 	/*
 	 *	Map rendertarget exports to game module exports
-	 *	@author	eezstreet
 	 */
 	void MapRenderTargetExports(D2ModuleImportStrc* pExport)
 	{

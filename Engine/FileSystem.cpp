@@ -3,7 +3,21 @@
 #include "FileSystem_MPQ.hpp"
 #include "MPQ.hpp"
 #include "Platform.hpp"
+#ifdef USE_ALLEGRO5
+#include "Allegro5.hpp"
+typedef ALLEGRO_MUTEX D2Mutex;
+static inline D2Mutex* D2_CreateMutex() { return al_create_mutex(); }
+static inline void D2_LockMutex(D2Mutex* m) { if (m) al_lock_mutex(m); }
+static inline void D2_UnlockMutex(D2Mutex* m) { if (m) al_unlock_mutex(m); }
+static inline void D2_DestroyMutex(D2Mutex* m) { if (m) al_destroy_mutex(m); }
+#else
 #include "../Libraries/sdl/SDL_thread.h"
+typedef SDL_mutex D2Mutex;
+static inline D2Mutex* D2_CreateMutex() { return D2_CreateMutex(); }
+static inline void D2_LockMutex(D2Mutex* m) { D2_LockMutex(m); }
+static inline void D2_UnlockMutex(D2Mutex* m) { D2_UnlockMutex(m); }
+static inline void D2_DestroyMutex(D2Mutex* m) { D2_DestroyMutex(m); }
+#endif
 #include <assert.h>
 
 /*
@@ -47,7 +61,7 @@ namespace FS
 		char szFileName[MAX_D2PATH];
 		FILE *handle;
 		OpenD2FileModes mode;
-		SDL_mutex *mut;
+		D2Mutex *mut;
 		bool bActive;
 		bool bLoadedFromMPQ;
 		D2MPQArchive *mpq;
@@ -159,7 +173,7 @@ namespace FS
 		// Create mutexes for each openable file
 		for (int i = 0; i < MAX_CONCURRENT_FILES_OPEN; i++)
 		{
-			glFileHandles[i].mut = SDL_CreateMutex();
+			glFileHandles[i].mut = D2_CreateMutex();
 		}
 
 		// Make sure there's no garbage in the strings
@@ -193,7 +207,7 @@ namespace FS
 					fclose(pRecord->handle);
 				}
 			}
-			SDL_DestroyMutex(pRecord->mut);
+			D2_DestroyMutex(pRecord->mut);
 		}
 	}
 
@@ -366,7 +380,7 @@ namespace FS
 		// Not active, store it!
 		*f = outHandle;
 		glFileHandles[outHandle].handle = fileHandle;
-		SDL_UnlockMutex(glFileHandles[outHandle].mut);
+		D2_UnlockMutex(glFileHandles[outHandle].mut);
 		glFileHandles[outHandle].mode = mode;
 		glFileHandles[outHandle].bActive = true;
 		glFileHandles[outHandle].bLoadedFromMPQ = bUsedMPQ;
@@ -417,7 +431,7 @@ namespace FS
 			return 0;
 		}
 
-		SDL_LockMutex(pSource->mut);
+		D2_LockMutex(pSource->mut);
 		if (pSource->bLoadedFromMPQ)
 		{
 			result = MPQ::ReadFile(pSource->mpq, pSource->mpqFileHandle, (BYTE *)buffer, dwBufferLen);
@@ -426,7 +440,7 @@ namespace FS
 		{
 			result = fread(buffer, dwBufferLen, dwCount, pSource->handle);
 		}
-		SDL_UnlockMutex(pSource->mut);
+		D2_UnlockMutex(pSource->mut);
 
 		return result;
 	}
@@ -452,7 +466,7 @@ namespace FS
 		}
 
 		// Lock the mutex until we are done writing
-		SDL_LockMutex(pRecord->mut);
+		D2_LockMutex(pRecord->mut);
 
 		if (dwBufferLen == 0)
 		{
@@ -462,7 +476,7 @@ namespace FS
 		result = fwrite(buffer, dwCount, dwBufferLen, pRecord->handle);
 
 		// Unlock the mutex so other stuff can use this
-		SDL_UnlockMutex(pRecord->mut);
+		D2_UnlockMutex(pRecord->mut);
 
 		return result;
 	}
@@ -490,7 +504,7 @@ namespace FS
 		}
 
 		// Lock, write, unlock
-		SDL_LockMutex(pRecord->mut);
+		D2_LockMutex(pRecord->mut);
 		if (!pRecord->bLoadedFromMPQ)
 		{
 			fclose(pRecord->handle);
@@ -499,7 +513,7 @@ namespace FS
 		pRecord->mpq = nullptr;
 		pRecord->bActive = false;
 		gnNumFilesOpened--;
-		SDL_UnlockMutex(pRecord->mut);
+		D2_UnlockMutex(pRecord->mut);
 	}
 
 	/*
@@ -519,9 +533,9 @@ namespace FS
 		// Not allowed to Seek() on files from MPQs.
 		Log_WarnAssertVoidReturn(!pRecord->bLoadedFromMPQ);
 
-		SDL_LockMutex(pRecord->mut);
+		D2_LockMutex(pRecord->mut);
 		fseek(pRecord->handle, offset, nSeekType);
-		SDL_UnlockMutex(pRecord->mut);
+		D2_UnlockMutex(pRecord->mut);
 	}
 
 	/*
@@ -540,9 +554,9 @@ namespace FS
 		// Not allowed to Tell() on files from MPQs
 		Log_WarnAssertReturn(!pFile->bLoadedFromMPQ, 0);
 
-		SDL_LockMutex(pFile->mut);
+		D2_LockMutex(pFile->mut);
 		result = ftell(pFile->handle);
-		SDL_UnlockMutex(pFile->mut);
+		D2_UnlockMutex(pFile->mut);
 		return result;
 	}
 

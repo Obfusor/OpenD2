@@ -4,6 +4,14 @@
 #include "Platform.hpp"
 #include "Window.hpp"
 #include <time.h>
+
+#ifdef USE_ALLEGRO5
+// Use our own constants since SDL headers aren't available
+#ifndef SDL_MESSAGEBOX_WARNING
+#define SDL_MESSAGEBOX_WARNING   D2_MESSAGEBOX_WARNING
+#define SDL_MESSAGEBOX_ERROR     D2_MESSAGEBOX_ERROR
+#endif
+#endif
 #include <cstdio>
 
 ///////////////////////////////////////////////////////////

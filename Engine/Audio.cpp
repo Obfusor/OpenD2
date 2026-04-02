@@ -1,38 +1,48 @@
-#include "Audio_SDL.hpp"
 #include "Audio.hpp"
+
+#ifdef USE_ALLEGRO5
+// Audio stubs for Allegro 5 build (Phase 5 will implement Allegro audio)
+namespace Audio
+{
+	void Init(OpenD2ConfigStrc* openconfig) { (void)openconfig; }
+	void Shutdown() {}
+	sfx_handle RegisterSound(char* szAudioFile) { (void)szAudioFile; return 0; }
+	mus_handle RegisterMusic(char* szAudioFile) { (void)szAudioFile; return 0; }
+	void PlaySound(sfx_handle handle, int loops) { (void)handle; (void)loops; }
+	void PlayMusic(mus_handle handle, int loops) { (void)handle; (void)loops; }
+	void PauseAudio() {}
+	void ResumeAudio() {}
+	void SetMasterVolume(float volume) { (void)volume; }
+	void SetMusicVolume(float volume) { (void)volume; }
+	void SetSoundVolume(float volume) { (void)volume; }
+}
+#else
+#include "Audio_SDL.hpp"
 
 namespace Audio
 {
-
-	// Initialize audio
 	void Init(OpenD2ConfigStrc* openconfig)
 	{
-		// For now, just use SDL audio
 		Audio_SDL::Init(openconfig);
 	}
 
-	// De-initialize audio
 	void Shutdown()
 	{
-		// For now, just use SDL audio
 		Audio_SDL::Shutdown();
 	}
 
 	sfx_handle RegisterSound(char* szAudioFile)
 	{
-		// For now, just use SDL audio
 		return Audio_SDL::RegisterSound(szAudioFile);
 	}
 
 	mus_handle RegisterMusic(char* szAudioFile)
 	{
-		// For now, just use SDL audio
 		return Audio_SDL::RegisterMusic(szAudioFile);
 	}
 
 	void PlaySound(sfx_handle handle, int loops)
 	{
-		// For now, just use SDL audio
 		return Audio_SDL::PlaySound(handle, loops);
 	}
 
@@ -51,24 +61,19 @@ namespace Audio
 		return Audio_SDL::ResumeAudio();
 	}
 
-	// Change master volume
 	void SetMasterVolume(float volume)
 	{
-		// Just pipe it into SDL for now
 		Audio_SDL::SetMasterVolume(volume);
 	}
 
-	// Change music volume
 	void SetMusicVolume(float volume)
 	{
-		// Just pipe it into SDL for now
 		Audio_SDL::SetMusicVolume(volume);
 	}
 
-	// Change sound volume
 	void SetSoundVolume(float volume)
 	{
-		// Just pipe it into SDL for now
 		Audio_SDL::SetSoundVolume(volume);
 	}
 }
+#endif // USE_ALLEGRO5
