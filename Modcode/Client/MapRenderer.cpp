@@ -108,9 +108,39 @@ void MapRenderer::LoadDT1sFromDS1()
 		if (_stricmp(ext, ".dt1") != 0 && _stricmp(ext, ".tgl") != 0)
 			continue;
 
-		// Build full path
+		// Build full path - DS1 files embed paths in various formats:
+		//   "\d2\data\global\tiles\expansion\baallair\floor.dt1"
+		//   "data\global\tiles\act3\jungle\pygmy.tg1"
+		// We need to normalize to "data\global\tiles\..."
 		char dt1Path[MAX_D2PATH];
-		snprintf(dt1Path, MAX_D2PATH, "data\\global\\tiles\\%s", filename);
+		const char *tilesPos = nullptr;
+
+		// Look for "data\global\tiles\" or "data/global/tiles/" in the filename
+		// (case insensitive, handle both slash types)
+		for (const char *p = filename; *p; p++)
+		{
+			if ((*p == 'd' || *p == 'D') &&
+				_strnicmp(p, "data", 4) == 0)
+			{
+				// Check if this is followed by \global\tiles or /global/tiles
+				const char *q = p + 4;
+				if (*q == '\\' || *q == '/')
+				{
+					tilesPos = p;
+					break;
+				}
+			}
+		}
+
+		if (tilesPos)
+		{
+			snprintf(dt1Path, MAX_D2PATH, "%s", tilesPos);
+		}
+		else
+		{
+			// No recognizable prefix — try as-is under tiles/
+			snprintf(dt1Path, MAX_D2PATH, "data\\global\\tiles\\%s", filename);
+		}
 
 		// Normalize slashes
 		for (char *p = dt1Path; *p; p++)
