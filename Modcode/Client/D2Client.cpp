@@ -1,5 +1,6 @@
 #include "D2Client.hpp"
 #include "MapSelector.hpp"
+#include "MapRenderer.hpp"
 #include "UI/Menus/Trademark.hpp"
 #include "UI/Menus/Main.hpp"
 #include "UI/Menus/TCPIP.hpp"
@@ -135,6 +136,33 @@ static void D2Client_HandleInput()
 	for (DWORD i = 0; i < openConfig->dwNumPendingCommands; i++)
 	{
 		D2CommandQueue *pCmd = &openConfig->pCmds[i];
+
+		// MapRenderer intercepts input when a map is loaded
+		if (gpMapRenderer != nullptr && gpMapRenderer->IsLoaded())
+		{
+			if (pCmd->cmdType == IN_KEYDOWN)
+			{
+				if (pCmd->cmdData.button.buttonID == 27) // Escape
+				{
+					// Go back to map selector
+					gpMapRenderer->UnloadMap();
+					delete gpMapRenderer;
+					gpMapRenderer = nullptr;
+
+					gpMapSelector = new MapSelector();
+					gpMapSelector->ScanDirectory(openConfig->szBasePath);
+					continue;
+				}
+				gpMapRenderer->HandleKeyDown(pCmd->cmdData.button.buttonID);
+				continue;
+			}
+			else if (pCmd->cmdType == IN_QUIT)
+			{
+				cl.bKillGame = true;
+				return;
+			}
+			continue;
+		}
 
 		// MapSelector intercepts input when active
 		if (gpMapSelector != nullptr && gpMapSelector->IsActive())
@@ -496,18 +524,18 @@ static void D2Client_RunClientFrame()
 	if (gpMapSelector != nullptr && gpMapSelector->IsActive())
 	{
 		gpMapSelector->Draw();
-		// Don't call Present() here - MapSelector::Draw() calls it
 		goto frame_end;
 	}
 	else if (gpMapSelector != nullptr && gpMapSelector->HasSelection())
 	{
-		// User made a selection - transition to map preview
-		engine->Print(PRIORITY_MESSAGE, "Selected map: %s", gpMapSelector->GetSelectedPath());
+		// User made a selection - load with MapRenderer
+		const char *selectedPath = gpMapSelector->GetSelectedPath();
+		engine->Print(PRIORITY_MESSAGE, "Selected map: %s", selectedPath);
 
-		// Activate MapPreviewer mode with the selected DS1
-		openConfig->currentGameMode = OpenD2GameModes::MapPreviewer;
-		cl.gamestate = GS_LOADING;
-		cl.nLoadState = 3; // Skip to level creation step
+		// Create MapRenderer and load the selected map
+		if (gpMapRenderer == nullptr)
+			gpMapRenderer = new MapRenderer();
+		gpMapRenderer->LoadMap(selectedPath);
 
 		delete gpMapSelector;
 		gpMapSelector = nullptr;
@@ -518,6 +546,13 @@ static void D2Client_RunClientFrame()
 		delete gpMapSelector;
 		gpMapSelector = nullptr;
 		cl.bKillGame = true;
+		goto frame_end;
+	}
+
+	// MapRenderer draws the loaded map
+	if (gpMapRenderer != nullptr && gpMapRenderer->IsLoaded())
+	{
+		gpMapRenderer->Draw();
 		goto frame_end;
 	}
 
@@ -579,7 +614,12 @@ static OpenD2Modules D2Client_RunModuleFrame(D2GameConfigStrc *pConfig, OpenD2Co
  */
 static void D2Client_Shutdown()
 {
-	// Clean up map selector
+	// Clean up map viewer
+	if (gpMapRenderer != nullptr)
+	{
+		delete gpMapRenderer;
+		gpMapRenderer = nullptr;
+	}
 	if (gpMapSelector != nullptr)
 	{
 		delete gpMapSelector;

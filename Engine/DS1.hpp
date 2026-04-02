@@ -100,4 +100,7 @@ namespace DS1
 	DWORD GetObjectCount(handle ds1);
 	DS1Cell* GetCellAt(handle ds1, uint32_t x, uint32_t y, const DS1CellType& type);
 	const DS1Object& GetObject(handle ds1, int32_t which);
+	DWORD GetAct(handle ds1);
+	DWORD GetFileCount(handle ds1);
+	const char* GetFileName(handle ds1, int index);
 }

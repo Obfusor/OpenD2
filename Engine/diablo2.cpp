@@ -146,6 +146,7 @@ static D2ModuleImportStrc exports = {
 	TBL::FindStringText,
 
 	Pal::GetPL2ColorModulation,
+	Pal::GetPalette,
 
 	Audio::RegisterSound,
 	Audio::RegisterMusic,
@@ -162,6 +163,9 @@ static D2ModuleImportStrc exports = {
 	DS1::GetObjectCount,
 	DS1::GetCellAt,
 	DS1::GetObject,
+	DS1::GetAct,
+	DS1::GetFileCount,
+	DS1::GetFileName,
 
 	DT1::LoadDT1,
 	DT1::GetNumBlocks,

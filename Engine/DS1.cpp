@@ -107,6 +107,38 @@ namespace DS1
 		DS1File *ds1File = loadedDS1Files[ds1];
 		return ds1File->objects[which];
 	}
+
+	DWORD GetAct(handle ds1)
+	{
+		if (ds1 == INVALID_HANDLE)
+			return 1;
+		DS1File *ds1File = loadedDS1Files[ds1];
+		if (ds1File == nullptr)
+			return 1;
+		return ds1File->fileHeader.dwAct;
+	}
+
+	DWORD GetFileCount(handle ds1)
+	{
+		if (ds1 == INVALID_HANDLE)
+			return 0;
+		DS1File *ds1File = loadedDS1Files[ds1];
+		if (ds1File == nullptr)
+			return 0;
+		return ds1File->fileHeader.dwExtraFilesCount;
+	}
+
+	const char *GetFileName(handle ds1, int index)
+	{
+		if (ds1 == INVALID_HANDLE)
+			return nullptr;
+		DS1File *ds1File = loadedDS1Files[ds1];
+		if (ds1File == nullptr || index < 0 || index >= 8)
+			return nullptr;
+		if (ds1File->optionalFileList[index][0] == '\0')
+			return nullptr;
+		return ds1File->optionalFileList[index];
+	}
 }
 
 BYTE directionLookup[] = {

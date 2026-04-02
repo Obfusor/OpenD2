@@ -891,6 +891,7 @@ struct D2ModuleImportStrc
 
 	// Palette calls
 	bool (*PAL_GetPL2ColorModulation)(int palette, int color, float &R, float &G, float &B);
+	D2Palette *(*PAL_GetPalette)(int nIndex);
 
 	// Audio calls
 	sfx_handle (*S_RegisterSound)(char *szAudioFile);
@@ -909,6 +910,9 @@ struct D2ModuleImportStrc
 	DWORD (*DS1_GetObjectCount)(handle ds1);
 	DS1Cell *(*DS1_GetCellAt)(handle ds1, uint32_t x, uint32_t y, const DS1CellType &type);
 	const DS1Object &(*DS1_GetObject)(handle ds1, int32_t which);
+	DWORD (*DS1_GetAct)(handle ds1);
+	DWORD (*DS1_GetFileCount)(handle ds1);
+	const char *(*DS1_GetFileName)(handle ds1, int index);
 
 	// DT1 calls
 	handle (*DT1_Load)(const char *path);
