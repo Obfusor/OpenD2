@@ -8,6 +8,27 @@
 #include <allegro5/allegro_font.h>
 #include <allegro5/allegro_primitives.h>
 
+// Editor compat functions for 8-bit bitmap creation
+extern "C" {
+	// From EditorCompat/allegro5_compat.h
+	typedef struct {
+		ALLEGRO_BITMAP *al_bmp;
+		int w, h;
+		unsigned char **line;
+		int clip_x1, clip_y1;
+		int clip_x2, clip_y2;
+		void *vtable;
+		unsigned char *data;
+	} BITMAP_A4;
+
+	BITMAP_A4 *create_bitmap_8bpp(int width, int height);
+	void destroy_bitmap_a4_compat(BITMAP_A4 *bmp);
+
+	// From EditorCompat/dt1_draw.h
+	void draw_sub_tile_isometric(BITMAP_A4 *dst, int x0, int y0, unsigned char *data, int length);
+	void draw_sub_tile_normal(BITMAP_A4 *dst, int x0, int y0, unsigned char *data, int length);
+}
+
 static ALLEGRO_FONT *s_pFont = nullptr;
 static void EnsureFont()
 {
@@ -51,11 +72,8 @@ bool MapRenderer::LoadMap(const char *relativePath)
 {
 	UnloadMap();
 
-	// Build full data path
 	char ds1Path[MAX_D2PATH];
 	snprintf(ds1Path, MAX_D2PATH, "data\\global\\tiles\\%s", relativePath);
-
-	// Normalize slashes
 	for (char *p = ds1Path; *p; p++)
 		if (*p == '/') *p = '\\';
 
@@ -71,20 +89,18 @@ bool MapRenderer::LoadMap(const char *relativePath)
 	engine->DS1_GetSize(m_ds1Handle, m_mapWidth, m_mapHeight);
 	m_act = engine->DS1_GetAct(m_ds1Handle);
 
-	engine->Print(PRIORITY_MESSAGE, "MapRenderer: Map size %dx%d, Act %d", m_mapWidth, m_mapHeight, m_act);
+	engine->Print(PRIORITY_MESSAGE, "MapRenderer: Map size %dx%d, Act %d",
+		m_mapWidth, m_mapHeight, m_act);
 
-	// Set palette for this act
 	if (m_act >= 1 && m_act <= 5)
 		engine->renderer->SetGlobalPalette((D2Palettes)(m_act - 1));
 
-	// Load DT1 files referenced by this DS1
 	LoadDT1sFromDS1();
-
-	// Build lookup from tile properties to DT1 blocks
 	BuildTileLookup();
-
-	// Center camera on the map
 	CenterCamera();
+
+	engine->Print(PRIORITY_MESSAGE, "MapRenderer: Ready - %d DT1s, %d tile keys",
+		(int)m_loadedDT1s.size(), (int)m_tileLookup.size());
 
 	return true;
 }
@@ -92,7 +108,6 @@ bool MapRenderer::LoadMap(const char *relativePath)
 void MapRenderer::LoadDT1sFromDS1()
 {
 	DWORD fileCount = engine->DS1_GetFileCount(m_ds1Handle);
-	engine->Print(PRIORITY_MESSAGE, "MapRenderer: DS1 has %d file references", fileCount);
 
 	for (DWORD i = 0; i < fileCount; i++)
 	{
@@ -100,49 +115,32 @@ void MapRenderer::LoadDT1sFromDS1()
 		if (filename == nullptr || filename[0] == '\0')
 			continue;
 
-		// Skip non-DT1 files (some DS1s reference .tgl files)
 		size_t len = strlen(filename);
 		if (len < 4)
 			continue;
-		const char *ext = filename + len - 4;
-		if (_stricmp(ext, ".dt1") != 0 && _stricmp(ext, ".tgl") != 0)
-			continue;
 
-		// Build full path - DS1 files embed paths in various formats:
-		//   "\d2\data\global\tiles\expansion\baallair\floor.dt1"
-		//   "data\global\tiles\act3\jungle\pygmy.tg1"
-		// We need to normalize to "data\global\tiles\..."
+		// Build path by finding "data\global\tiles\" in the embedded filename
 		char dt1Path[MAX_D2PATH];
-		const char *tilesPos = nullptr;
+		const char *dataPos = nullptr;
 
-		// Look for "data\global\tiles\" or "data/global/tiles/" in the filename
-		// (case insensitive, handle both slash types)
 		for (const char *p = filename; *p; p++)
 		{
-			if ((*p == 'd' || *p == 'D') &&
-				_strnicmp(p, "data", 4) == 0)
+			if ((*p == 'd' || *p == 'D') && _strnicmp(p, "data", 4) == 0)
 			{
-				// Check if this is followed by \global\tiles or /global/tiles
 				const char *q = p + 4;
 				if (*q == '\\' || *q == '/')
 				{
-					tilesPos = p;
+					dataPos = p;
 					break;
 				}
 			}
 		}
 
-		if (tilesPos)
-		{
-			snprintf(dt1Path, MAX_D2PATH, "%s", tilesPos);
-		}
+		if (dataPos)
+			snprintf(dt1Path, MAX_D2PATH, "%s", dataPos);
 		else
-		{
-			// No recognizable prefix — try as-is under tiles/
 			snprintf(dt1Path, MAX_D2PATH, "data\\global\\tiles\\%s", filename);
-		}
 
-		// Normalize slashes
 		for (char *p = dt1Path; *p; p++)
 			if (*p == '/') *p = '\\';
 
@@ -150,8 +148,6 @@ void MapRenderer::LoadDT1sFromDS1()
 		if (dt1 != INVALID_HANDLE)
 		{
 			m_loadedDT1s.push_back(dt1);
-			engine->Print(PRIORITY_MESSAGE, "MapRenderer: Loaded DT1 %s (%d blocks)",
-				filename, engine->DT1_GetNumBlocks(dt1));
 		}
 	}
 
@@ -176,9 +172,6 @@ void MapRenderer::BuildTileLookup()
 			m_tileLookup[key].push_back(entry);
 		}
 	}
-
-	engine->Print(PRIORITY_MESSAGE, "MapRenderer: Built tile lookup with %d unique keys",
-		(int)m_tileLookup.size());
 }
 
 const TileEntry *MapRenderer::FindTile(long orientation, long mainIndex, long subIndex)
@@ -201,24 +194,15 @@ ALLEGRO_BITMAP *MapRenderer::DecodeTileBitmap(handle dt1, int blockIndex, int ac
 	uint32_t w, h;
 	int32_t ox, oy;
 	void *pixels = engine->DT1_DecodeBlock(dt1, blockIndex, w, h, ox, oy);
-	if (pixels == nullptr || w == 0 || h == 0)
+	if (pixels == nullptr || w == 0 || h == 0 || w > 1024 || h > 1024)
 	{
 		m_tileCache[cacheKey] = nullptr;
 		return nullptr;
 	}
 
-	// Sanity check dimensions (prevent absurd allocations)
-	if (w > 1024 || h > 1024)
-	{
-		m_tileCache[cacheKey] = nullptr;
-		return nullptr;
-	}
-
-	// Get the palette for this act
-	// Note: pixels points to DT1File's internal buffer — do NOT free it
+	// Get palette — pixels is palette-indexed bytes from the engine decoder
 	D2Palette *pal = engine->PAL_GetPalette(act < 5 ? act : 0);
 
-	// Create an ALLEGRO_BITMAP and convert palette indices to RGBA
 	ALLEGRO_BITMAP *bmp = al_create_bitmap(w, h);
 	if (bmp == nullptr)
 	{
@@ -238,8 +222,7 @@ ALLEGRO_BITMAP *MapRenderer::DecodeTileBitmap(handle dt1, int blockIndex, int ac
 				BYTE idx = src[y * w + x];
 				if (idx == 0)
 				{
-					// Transparent
-					dst[x] = 0x00000000;
+					dst[x] = 0x00000000; // transparent
 				}
 				else if (pal)
 				{
@@ -250,7 +233,6 @@ ALLEGRO_BITMAP *MapRenderer::DecodeTileBitmap(handle dt1, int blockIndex, int ac
 				}
 				else
 				{
-					// No palette: grayscale fallback
 					dst[x] = 0xFF000000 | (idx << 16) | (idx << 8) | idx;
 				}
 			}
@@ -258,7 +240,7 @@ ALLEGRO_BITMAP *MapRenderer::DecodeTileBitmap(handle dt1, int blockIndex, int ac
 		al_unlock_bitmap(bmp);
 	}
 
-	// Note: do NOT free(pixels) — it's DT1File's internal reusable buffer
+	// Do NOT free pixels — it's DT1File's internal reusable buffer
 	m_tileCache[cacheKey] = bmp;
 	return bmp;
 }
@@ -282,27 +264,11 @@ bool MapRenderer::HandleKeyDown(DWORD keyCode)
 {
 	switch (keyCode)
 	{
-	case B_LEFTARROW:
-		ScrollCamera(-SCROLL_SPEED * 4, 0);
-		return true;
-	case B_RIGHTARROW:
-		ScrollCamera(SCROLL_SPEED * 4, 0);
-		return true;
-	case B_UPARROW:
-	case 'w':
-	case 'W':
-		ScrollCamera(0, -SCROLL_SPEED * 4);
-		return true;
-	case B_DOWNARROW:
-	case 's':
-	case 'S':
-		ScrollCamera(0, SCROLL_SPEED * 4);
-		return true;
-	case B_HOME:
-		CenterCamera();
-		return true;
-	case 27: // Escape - go back to map selector
-		return false; // Let caller handle
+	case B_LEFTARROW:  ScrollCamera(-SCROLL_SPEED * 4, 0); return true;
+	case B_RIGHTARROW: ScrollCamera(SCROLL_SPEED * 4, 0);  return true;
+	case B_UPARROW: case 'w': case 'W': ScrollCamera(0, -SCROLL_SPEED * 4); return true;
+	case B_DOWNARROW: case 's': case 'S': ScrollCamera(0, SCROLL_SPEED * 4); return true;
+	case B_HOME: CenterCamera(); return true;
 	}
 	return false;
 }
@@ -313,13 +279,16 @@ void MapRenderer::Draw()
 	engine->renderer->Clear();
 
 	if (m_ds1Handle == INVALID_HANDLE || m_mapWidth == 0 || m_mapHeight == 0)
+	{
+		engine->renderer->Present();
 		return;
+	}
 
 	int act = (int)m_act - 1;
 	if (act < 0) act = 0;
 	if (act > 4) act = 4;
 
-	// Render floor tiles
+	// Pass 1: Floor tiles
 	for (int ty = 0; ty < m_mapHeight; ty++)
 	{
 		for (int tx = 0; tx < m_mapWidth; tx++)
@@ -327,13 +296,11 @@ void MapRenderer::Draw()
 			float sx = (float)(tx - ty) * HALF_W - m_cameraX;
 			float sy = (float)(tx + ty) * HALF_H - m_cameraY;
 
-			// Frustum cull
 			if (sx + TILE_W < 0 || sx > SCREEN_W || sy + TILE_H < 0 || sy > SCREEN_H + 200)
 				continue;
 
 			DS1Cell *cell = engine->DS1_GetCellAt(m_ds1Handle, tx, ty, DS1Cell_Floor);
-			if (cell == nullptr)
-				continue;
+			if (cell == nullptr) continue;
 			if (cell->prop1 == 0 && cell->prop2 == 0 && cell->prop3 == 0 && cell->prop4 == 0)
 				continue;
 
@@ -341,18 +308,15 @@ void MapRenderer::Draw()
 			long subIndex = cell->prop2;
 
 			const TileEntry *entry = FindTile(0, mainIndex, subIndex);
-			if (entry == nullptr)
-				continue;
+			if (entry == nullptr) continue;
 
 			ALLEGRO_BITMAP *tileBmp = DecodeTileBitmap(entry->dt1Handle, entry->blockIndex, act);
 			if (tileBmp)
-			{
 				al_draw_bitmap(tileBmp, sx, sy, 0);
-			}
 		}
 	}
 
-	// Render wall tiles
+	// Pass 2: Shadow tiles
 	for (int ty = 0; ty < m_mapHeight; ty++)
 	{
 		for (int tx = 0; tx < m_mapWidth; tx++)
@@ -363,28 +327,61 @@ void MapRenderer::Draw()
 			if (sx + TILE_W < 0 || sx > SCREEN_W || sy + 200 < 0 || sy > SCREEN_H + 200)
 				continue;
 
-			DS1Cell *cell = engine->DS1_GetCellAt(m_ds1Handle, tx, ty, DS1Cell_Wall);
-			if (cell == nullptr)
-				continue;
+			DS1Cell *cell = engine->DS1_GetCellAt(m_ds1Handle, tx, ty, DS1Cell_Shadow);
+			if (cell == nullptr) continue;
 			if (cell->prop1 == 0 && cell->prop2 == 0 && cell->prop3 == 0 && cell->prop4 == 0)
-				continue;
-
-			long orientation = cell->orientation;
-			if (orientation == 0)
 				continue;
 
 			long mainIndex = ((cell->prop4 & 0x03) << 4) | (cell->prop3 >> 4);
 			long subIndex = cell->prop2;
 
-			const TileEntry *entry = FindTile(orientation, mainIndex, subIndex);
-			if (entry == nullptr)
-				continue;
+			const TileEntry *entry = FindTile(13, mainIndex, subIndex);
+			if (entry == nullptr) continue;
 
 			ALLEGRO_BITMAP *tileBmp = DecodeTileBitmap(entry->dt1Handle, entry->blockIndex, act);
 			if (tileBmp)
 			{
-				// Walls draw at same X but shifted down by TILE_H
-				al_draw_bitmap(tileBmp, sx, sy + TILE_H, 0);
+				// Draw shadows with transparency
+				al_draw_tinted_bitmap(tileBmp, al_map_rgba_f(0.3f, 0.3f, 0.3f, 0.5f),
+					sx, sy + TILE_H, 0);
+			}
+		}
+	}
+
+	// Pass 3: Wall tiles (sorted by orientation)
+	for (int ty = 0; ty < m_mapHeight; ty++)
+	{
+		for (int tx = 0; tx < m_mapWidth; tx++)
+		{
+			float sx = (float)(tx - ty) * HALF_W - m_cameraX;
+			float sy = (float)(tx + ty) * HALF_H - m_cameraY;
+
+			if (sx + TILE_W < 0 || sx > SCREEN_W || sy + 400 < 0 || sy > SCREEN_H + 200)
+				continue;
+
+			DS1Cell *cell = engine->DS1_GetCellAt(m_ds1Handle, tx, ty, DS1Cell_Wall);
+			if (cell == nullptr) continue;
+			if (cell->prop1 == 0 && cell->prop2 == 0 && cell->prop3 == 0 && cell->prop4 == 0)
+				continue;
+
+			long orientation = cell->orientation;
+			if (orientation == 0) continue; // skip floor-oriented
+
+			long mainIndex = ((cell->prop4 & 0x03) << 4) | (cell->prop3 >> 4);
+			long subIndex = cell->prop2;
+
+			const TileEntry *entry = FindTile(orientation, mainIndex, subIndex);
+			if (entry == nullptr) continue;
+
+			ALLEGRO_BITMAP *tileBmp = DecodeTileBitmap(entry->dt1Handle, entry->blockIndex, act);
+			if (tileBmp)
+			{
+				int bmpH = al_get_bitmap_height(tileBmp);
+				// Walls are positioned relative to the floor tile
+				// Upper walls (orientation < 15) draw above the floor
+				// Lower walls (orientation >= 15) draw at floor level
+				float wallY = sy + TILE_H - (float)bmpH;
+				al_draw_bitmap(tileBmp, sx, wallY, 0);
 			}
 		}
 	}
@@ -393,9 +390,7 @@ void MapRenderer::Draw()
 	EnsureFont();
 	if (s_pFont)
 	{
-		// Dark bar at top
-		al_draw_filled_rectangle(0, 0, (float)SCREEN_W, 24,
-			al_map_rgba(0, 0, 0, 180));
+		al_draw_filled_rectangle(0, 0, (float)SCREEN_W, 24, al_map_rgba(0, 0, 0, 180));
 
 		char info[256];
 		snprintf(info, sizeof(info),

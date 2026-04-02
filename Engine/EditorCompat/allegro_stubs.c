@@ -216,6 +216,8 @@ BITMAP *create_bitmap_a4_compat(int width, int height)
 	if (!bmp)
 		return NULL;
 
+	memset(bmp, 0, sizeof(BITMAP));
+
 	bmp->al_bmp = al_create_bitmap(width, height);
 	if (!bmp->al_bmp)
 	{
@@ -225,6 +227,44 @@ BITMAP *create_bitmap_a4_compat(int width, int height)
 
 	bmp->w = width;
 	bmp->h = height;
+
+	// Allocate 8-bit indexed pixel buffer with line pointers
+	bmp->data = (unsigned char *)calloc(width * height, 1);
+	if (bmp->data)
+	{
+		bmp->line = (unsigned char **)malloc(height * sizeof(unsigned char *));
+		if (bmp->line)
+		{
+			for (int y = 0; y < height; y++)
+				bmp->line[y] = bmp->data + y * width;
+		}
+	}
+
+	return bmp;
+}
+
+// Create an 8-bit bitmap with no Allegro backing (for framebuffers)
+BITMAP *create_bitmap_8bpp(int width, int height)
+{
+	BITMAP *bmp = (BITMAP *)malloc(sizeof(BITMAP));
+	if (!bmp)
+		return NULL;
+
+	memset(bmp, 0, sizeof(BITMAP));
+	bmp->w = width;
+	bmp->h = height;
+	bmp->al_bmp = NULL; // No Allegro bitmap
+
+	bmp->data = (unsigned char *)calloc(width * height, 1);
+	if (bmp->data)
+	{
+		bmp->line = (unsigned char **)malloc(height * sizeof(unsigned char *));
+		if (bmp->line)
+		{
+			for (int y = 0; y < height; y++)
+				bmp->line[y] = bmp->data + y * width;
+		}
+	}
 
 	return bmp;
 }
@@ -236,6 +276,14 @@ void destroy_bitmap_a4_compat(BITMAP *bmp)
 		if (bmp->al_bmp)
 		{
 			al_destroy_bitmap(bmp->al_bmp);
+		}
+		if (bmp->line)
+		{
+			free(bmp->line);
+		}
+		if (bmp->data)
+		{
+			free(bmp->data);
 		}
 		free(bmp);
 	}
@@ -509,22 +557,19 @@ int getb_a4_compat(ALLEGRO_COLOR color)
 // Missing utility functions
 void putpixel(BITMAP_A4 *bmp, int x, int y, int color)
 {
-	if (bmp && bmp->al_bmp)
+	// Write palette index directly to 8-bit line buffer (fast path)
+	if (bmp && bmp->line && x >= 0 && y >= 0 && x < bmp->w && y < bmp->h)
 	{
-		al_set_target_bitmap(bmp->al_bmp);
-		al_put_pixel(x, y, PALETTE_COLOR(color));
+		bmp->line[y][x] = (unsigned char)color;
 	}
 }
 
 int getpixel(BITMAP_A4 *bmp, int x, int y)
 {
-	if (bmp && bmp->al_bmp)
+	// Read palette index from 8-bit line buffer
+	if (bmp && bmp->line && x >= 0 && y >= 0 && x < bmp->w && y < bmp->h)
 	{
-		al_set_target_bitmap(bmp->al_bmp);
-		ALLEGRO_COLOR color = al_get_pixel(bmp->al_bmp, x, y);
-		unsigned char r, g, b;
-		al_unmap_rgb(color, &r, &g, &b);
-		return (int)r; // Simple approximation
+		return (int)bmp->line[y][x];
 	}
 	return 0;
 }

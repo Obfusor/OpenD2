@@ -449,6 +449,7 @@ void text_mode(int mode);
 void clear(BITMAP *bmp);
 void set_palette(const PALETTE pal);
 BITMAP *create_bitmap_ex(int color_depth, int width, int height);
+BITMAP *create_bitmap_8bpp(int width, int height);
 int is_linear_bitmap(BITMAP *bmp);
 
 #endif // ALLEGRO5_COMPAT_H
