@@ -3,7 +3,6 @@
 #include <algorithm>
 #include <cstring>
 
-#ifdef USE_ALLEGRO5
 #include <allegro5/allegro.h>
 #include <allegro5/allegro_font.h>
 #include <allegro5/allegro_primitives.h>
@@ -44,7 +43,6 @@ static void DrawAlTextF(float x, float y, float r, float g, float b, float a, co
 			x, y, ALLEGRO_ALIGN_LEFT, buffer);
 	}
 }
-#endif
 
 #ifdef _WIN32
 #include <windows.h>
@@ -484,8 +482,6 @@ void MapSelector::DrawHeader()
 	float countBg[] = {0.1f, 0.1f, 0.1f, 1.0f};
 	engine->renderer->DrawRectangle(0, (float)(SCREEN_H - 40), (float)SCREEN_W, 40, 0, nullptr, countBg);
 
-#ifdef USE_ALLEGRO5
-
 	DrawAlText(10, 12, 0.9f, 0.8f, 0.5f, 1.0f, "OpenD2 Map Viewer - DS1 File Browser");
 	DrawAlTextF(10, (float)(SCREEN_H - 30), 0.6f, 0.6f, 0.6f, 1.0f,
 		"%d files | Up/Down: Navigate | Enter: Load | Esc: Exit | PgUp/PgDn: Scroll",
@@ -503,7 +499,6 @@ void MapSelector::DrawHeader()
 				m_previewWidth, m_previewHeight);
 		}
 	}
-#endif
 }
 
 void MapSelector::DrawFileList()
@@ -516,10 +511,6 @@ void MapSelector::DrawFileList()
 	float listBg[] = {0.08f, 0.08f, 0.08f, 1.0f};
 	engine->renderer->DrawRectangle((float)LIST_X - 2, (float)LIST_Y - 2,
 		(float)LIST_W + 4, (float)(m_visibleRows * ROW_H) + 4, 0, nullptr, listBg);
-
-#ifdef USE_ALLEGRO5
-
-#endif
 
 	std::string lastGroup;
 
@@ -559,7 +550,6 @@ void MapSelector::DrawFileList()
 			engine->renderer->DrawRectangle((float)LIST_X, y, 3, (float)ROW_H, 0, nullptr, barColor);
 		}
 
-#ifdef USE_ALLEGRO5
 		// Draw the filename with text
 		if (fileIndex == m_selectedIndex)
 		{
@@ -571,7 +561,6 @@ void MapSelector::DrawFileList()
 			DrawAlText((float)LIST_X + 8, y + 3, 0.65f, 0.65f, 0.65f, 0.9f,
 				entry.relativePath.c_str());
 		}
-#endif
 	}
 
 	// Draw scrollbar (12px wide to match hit area)
@@ -728,21 +717,15 @@ void MapSelector::DrawPreview()
 		engine->renderer->DrawRectangle((float)PREVIEW_X + 5, (float)(PREVIEW_Y + PREVIEW_H - 30),
 			(float)PREVIEW_W - 10, 25, 0, nullptr, infoBg);
 
-#ifdef USE_ALLEGRO5
-	
 		DrawAlTextF((float)PREVIEW_X + 10, (float)(PREVIEW_Y + PREVIEW_H - 25),
 			0.7f, 0.7f, 0.7f, 1.0f, "Map Size: %d x %d tiles",
 			m_previewWidth, m_previewHeight);
-#endif
 	}
 	else
 	{
-#ifdef USE_ALLEGRO5
 		// No preview loaded - show instruction text
-	
 		DrawAlText((float)PREVIEW_X + 50, (float)(PREVIEW_Y + PREVIEW_H / 2 - 8),
 			0.4f, 0.4f, 0.4f, 1.0f, "Select a .ds1 file to preview");
-#endif
 	}
 }
 

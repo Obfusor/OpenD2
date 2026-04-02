@@ -15,6 +15,7 @@ namespace D2Menus
 		Debug();
 		virtual ~Debug();
 
+		virtual bool HandleKeyDown(DWORD dwKey);
 		virtual void Draw();
 	};
 }

@@ -1,9 +1,5 @@
 #include "Renderer.hpp"
-#ifdef USE_ALLEGRO5
 #include "Renderer_Allegro.hpp"
-#else
-#include "Renderer_GL.hpp"
-#endif
 #include "Palette.hpp"
 #include "DCC.hpp"
 
@@ -18,7 +14,6 @@ IRenderer* RenderTarget = nullptr;
 
 namespace Renderer
 {
-#ifdef USE_ALLEGRO5
 	/*
 	 *	Initializes the Allegro 5 renderer.
 	 */
@@ -30,42 +25,6 @@ namespace Renderer
 
 		RenderTarget = new Renderer_Allegro(pConfig, pOpenConfig, pDisplay);
 	}
-#else
-	/*
-	 *	Initializes the SDL/OpenGL renderer.
-	 */
-	void Init(D2GameConfigStrc* pConfig, OpenD2ConfigStrc* pOpenConfig, SDL_Window* pWindow)
-	{
-		OpenD2RenderTargets DesiredRenderTarget = OD2RT_SDL;
-
-		// Determine which render target to go with
-		if (pConfig->bOpenGL || pConfig->bD3D || pOpenConfig->bNoSDLAccel)
-		{
-			DesiredRenderTarget = OD2RT_OPENGL;
-		}
-		else
-		{
-			DesiredRenderTarget = OD2RT_SDL;
-		}
-
-		// Load palettes
-		Pal::Init();
-		DCC::GlobalInit();
-
-		switch (DesiredRenderTarget)
-		{
-			default:
-			case OD2RT_OPENGL:
-				RenderTarget = new Renderer_GL(pConfig, pOpenConfig, pWindow);
-				break;
-#if 0	// no longer available
-			case OD2RT_SDL:
-				RenderTarget = new Renderer_SDL(pConfig, pOpenConfig, pWindow);
-				break;
-#endif
-		}
-	}
-#endif
 
 	/*
 	 *	Map rendertarget exports to game module exports

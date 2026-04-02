@@ -22,6 +22,7 @@ namespace D2Menus
 		Main();
 		virtual ~Main();
 
+		virtual bool HandleKeyDown(DWORD dwKey);
 		virtual void Draw();
 	};
 }

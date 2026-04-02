@@ -53,6 +53,7 @@ enum D2BindAction
     BIND_RUN_TOGGLE,
     BIND_SCREENSHOT,
     BIND_CLEAR_SCREEN,
+    BIND_TOGGLE_EDITOR,       // Toggle editor overlay (F12)
 
     BIND_MAX
 };

@@ -26,6 +26,7 @@ namespace D2Menus
 	public:
 		TCPIP();
 		virtual ~TCPIP();
+		virtual bool HandleKeyDown(DWORD dwKey);
 		virtual void Draw();
 
 		void ShowJoinSubmenu(bool bShow);

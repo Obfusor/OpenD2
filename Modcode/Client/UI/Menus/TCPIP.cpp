@@ -1,4 +1,5 @@
 #include "TCPIP.hpp"
+#include "OtherMultiplayer.hpp"
 
 #define TBLTEXT_YOURIP 5121
 #define TBLTEXT_TCPIPTITLE 5117
@@ -30,7 +31,8 @@ namespace D2Menus
 
 		backgroundObject = engine->renderer->AllocateObject(0);
 		backgroundObject->AttachCompositeTextureResource(background, 0, -1);
-		backgroundObject->SetDrawCoords(0, 0, 800, 600);
+		// Fill-and-crop: scale 800x600 to fill 1280x720
+		backgroundObject->SetDrawCoords(0, -120, 1280, 960);
 		backgroundObject->SetPalshift(0);
 
 		flameLeft = engine->renderer->AllocateObject(0);
@@ -46,38 +48,39 @@ namespace D2Menus
 		flameLeft->SetDrawMode(3);
 		flameRight->SetDrawMode(3);
 
-		flameLeft->SetDrawCoords(400, -285, -1, -1);
-		flameRight->SetDrawCoords(400, -285, -1, -1);
-		blackLeft->SetDrawCoords(400, -285, -1, -1);
-		blackRight->SetDrawCoords(400, -285, -1, -1);
+		// Center logo on 1280px display
+		flameLeft->SetDrawCoords(640, -285, -1, -1);
+		flameRight->SetDrawCoords(640, -285, -1, -1);
+		blackLeft->SetDrawCoords(640, -285, -1, -1);
+		blackRight->SetDrawCoords(640, -285, -1, -1);
 
 		// Title text: "TCP/IP Game"
 		titleText = engine->renderer->AllocateObject(1);
 		titleText->AttachFontResource(cl.font42);
 		titleText->SetText(engine->TBL_FindStringFromIndex(TBLTEXT_TCPIPTITLE));
-		titleText->SetDrawCoords(0, 70, 800, 50);
+		titleText->SetDrawCoords(0, 70, 1280, 50);
 
 		// "Your IP Address is:" label
 		yourIPLabel = engine->renderer->AllocateObject(1);
 		yourIPLabel->AttachFontResource(cl.fontFormal12);
 		yourIPLabel->SetText(engine->TBL_FindStringFromIndex(TBLTEXT_YOURIP));
-		yourIPLabel->SetDrawCoords(0, 110, 800, 15);
+		yourIPLabel->SetDrawCoords(0, 110, 1280, 15);
 
 		// Actual IP address
 		yourIPValue = engine->renderer->AllocateObject(1);
 		yourIPValue->AttachFontResource(cl.fontFormal12);
 		yourIPValue->SetText(engine->NET_GetLocalIP());
-		yourIPValue->SetDrawCoords(0, 130, 800, 15);
+		yourIPValue->SetDrawCoords(0, 130, 1280, 15);
 
 		versionText = engine->renderer->AllocateObject(1);
 		versionText->AttachFontResource(cl.font16);
 		versionText->SetText(GAME_FULL_UTF16);
-		versionText->SetDrawCoords(20, 560, 0, 0);
+		versionText->SetDrawCoords(20, 695, 0, 0);
 
 		m_joinMenu = new D2Panels::TCPIPJoin();
 		m_mainMenu = new D2Panels::TCPIPMain();
 
-		m_joinMenu->x = 265;
+		m_joinMenu->x = 504;
 		m_joinMenu->y = 160;
 
 		AddPanel(m_mainMenu);
@@ -140,5 +143,16 @@ namespace D2Menus
 		{
 			HidePanel(m_joinMenu);
 		}
+	}
+
+	bool TCPIP::HandleKeyDown(DWORD dwKey)
+	{
+		if (dwKey == 27) // Escape
+		{
+			delete cl.pActiveMenu;
+			cl.pActiveMenu = new OtherMultiplayer();
+			return true;
+		}
+		return D2Menu::HandleKeyDown(dwKey);
 	}
 }

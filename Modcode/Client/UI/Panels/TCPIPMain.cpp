@@ -20,17 +20,19 @@ namespace D2Panels
 	 */
 	TCPIPMain::TCPIPMain() : D2Panel()
 	{
-		m_hostGameButton = new D2Widgets::Button(265, 170, MAIN_BUTTON_DC6, "3wide", 0, 1, 2, 3, 4, 5);
-		m_joinGameButton = new D2Widgets::Button(265, 230, MAIN_BUTTON_DC6, "3wide", 0, 1, 2, 3, 4, 5);
-		m_cancelButton = new D2Widgets::Button(40, 535, SMALL_BUTTON_DC6, "medium", 0, 0, 1, 1, 0, 0);
-
-		m_hostGameButton->AttachText(engine->TBL_FindStringFromIndex(TBLTEXT_HOSTGAME));
-		m_joinGameButton->AttachText(engine->TBL_FindStringFromIndex(TBLTEXT_JOINGAME));
-		m_cancelButton->AttachText(engine->TBL_FindStringFromIndex(TBLTEXT_CANCEL));
+		// Center buttons on 1280px display: (1280 - 272) / 2 = 504
+		m_hostGameButton = new D2Widgets::Button(504, 170, MAIN_BUTTON_DC6, "3wide", 0, 1, 2, 3, 4, 5);
+		m_joinGameButton = new D2Widgets::Button(504, 230, MAIN_BUTTON_DC6, "3wide", 0, 1, 2, 3, 4, 5);
+		// Cancel button: (1280 - 256) / 2 = 512 for medium button
+		m_cancelButton = new D2Widgets::Button(512, 595, SMALL_BUTTON_DC6, "medium", 0, 0, 1, 1, 0, 0);
 
 		AddWidget(m_hostGameButton);
 		AddWidget(m_joinGameButton);
 		AddWidget(m_cancelButton);
+
+		m_hostGameButton->AttachText(engine->TBL_FindStringFromIndex(TBLTEXT_HOSTGAME));
+		m_joinGameButton->AttachText(engine->TBL_FindStringFromIndex(TBLTEXT_JOINGAME));
+		m_cancelButton->AttachText(engine->TBL_FindStringFromIndex(TBLTEXT_CANCEL));
 
 		m_joinGameButton->AddEventListener(Clicked, []
 										   {

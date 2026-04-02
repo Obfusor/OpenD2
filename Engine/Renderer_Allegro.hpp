@@ -1,18 +1,56 @@
 #pragma once
-#ifdef USE_ALLEGRO5
 #include "../Shared/D2Shared.hpp"
 #include "Allegro5.hpp"
+#include <unordered_map>
+#include <string>
+
+// Forward declare
+class Renderer_Allegro;
 
 /*
  *	Allegro 5 Render Object - implements IRenderObject
- *	Phase 2 stub: minimal implementation for display testing.
- *	Phase 3 will add the full 8-bit palette rendering pipeline.
+ *	Loads pre-converted PNG frames from DC6 assets.
  */
 class AllegroRenderObject : public IRenderObject
 {
+	friend class Renderer_Allegro;
 private:
+	enum RenderType { RT_NONE, RT_TEXTURE, RT_COMPOSITE, RT_ANIMATION, RT_FONT_TEXT };
+
+	// Core state
 	int m_x, m_y, m_w, m_h;
-	bool m_bVisible;
+	RenderType m_type;
+	Renderer_Allegro *m_pRenderer;
+
+	// RT_TEXTURE: single frame (cached bitmap, do NOT destroy)
+	ALLEGRO_BITMAP *m_texture;
+
+	// RT_COMPOSITE: stitched multi-frame (owned bitmap, destroy on reset)
+	ALLEGRO_BITMAP *m_compositeBitmap;
+
+	// RT_ANIMATION: frame array (owned array, bitmaps are cached)
+	ALLEGRO_BITMAP **m_animFrames;
+	int m_animFrameCount;
+	int m_animCurrentFrame;
+	double m_lastDrawTime;
+	float m_animFramerate;
+	bool m_animLoop;
+	int *m_frameOffsetX;
+	int *m_frameOffsetY;
+
+	// RT_FONT_TEXT: font + text (temporary: uses Allegro built-in font)
+	IGraphicsReference *m_fontRef;
+	char16_t m_textBuf[512];
+	int m_textColor;
+	int m_textAlignX, m_textAlignY, m_textAlignW, m_textAlignH;
+	int m_horzAlign, m_vertAlign;
+
+	// Shared properties
+	float m_colorR, m_colorG, m_colorB, m_colorA;
+	int m_drawMode;
+	BYTE m_palshift;
+
+	void Reset();
 
 public:
 	AllegroRenderObject();
@@ -53,6 +91,7 @@ private:
 	ALLEGRO_DISPLAY *m_pDisplay;
 	ALLEGRO_FONT *m_pBuiltinFont;
 	D2Palettes m_currentPalette;
+	char m_basePath[1024];
 
 	// Render object pool
 	static const int MAX_RENDER_OBJECTS = 4096;
@@ -60,13 +99,22 @@ private:
 	bool m_objectInUse[MAX_RENDER_OBJECTS];
 	int m_numAllocated;
 
+	// Bitmap cache: PNG path -> ALLEGRO_BITMAP*
+	std::unordered_map<std::string, ALLEGRO_BITMAP *> m_bitmapCache;
+
 public:
 	Renderer_Allegro(D2GameConfigStrc *pConfig, OpenD2ConfigStrc *pOpenConfig, ALLEGRO_DISPLAY *pDisplay);
 	~Renderer_Allegro();
 
-	// Allegro-specific text drawing (not part of IRenderer)
-	void DrawAlText(float x, float y, float r, float g, float b, float a, const char *text);
-	void DrawTextF(float x, float y, float r, float g, float b, float a, const char *fmt, ...);
+	// PNG loading
+	ALLEGRO_BITMAP *LoadOrGetBitmap(const char *pngPath);
+	static bool ResolvePNGPath(const char *basePath, const char *dc6Path,
+		int direction, int frame, int numDirections, char *outPath, size_t outLen);
+
+	// Accessors
+	ALLEGRO_DISPLAY *GetDisplay() { return m_pDisplay; }
+	ALLEGRO_FONT *GetBuiltinFont() { return m_pBuiltinFont; }
+	const char *GetBasePath() { return m_basePath; }
 
 	// IRenderer interface
 	virtual void Present() override;
@@ -81,5 +129,3 @@ public:
 	virtual void DrawLine(float x1, float x2, float y1, float y2, float strokeWidth,
 						  float *strokeColor) override;
 };
-
-#endif // USE_ALLEGRO5

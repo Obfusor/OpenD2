@@ -1,4 +1,5 @@
 #include "OtherMultiplayer.hpp"
+#include "Main.hpp"
 
 namespace D2Menus
 {
@@ -27,7 +28,8 @@ namespace D2Menus
 
 		backgroundObject = engine->renderer->AllocateObject(0);
 		backgroundObject->AttachCompositeTextureResource(background, 0, -1);
-		backgroundObject->SetDrawCoords(0, 0, 800, 600);
+		// Fill-and-crop: scale 800x600 to fill 1280x720
+		backgroundObject->SetDrawCoords(0, -120, 1280, 960);
 		backgroundObject->SetPalshift(0);
 
 		flameLeft = engine->renderer->AllocateObject(0);
@@ -43,15 +45,16 @@ namespace D2Menus
 		flameLeft->SetDrawMode(3);
 		flameRight->SetDrawMode(3);
 
-		flameLeft->SetDrawCoords(400, -285, -1, -1);
-		flameRight->SetDrawCoords(400, -285, -1, -1);
-		blackLeft->SetDrawCoords(400, -285, -1, -1);
-		blackRight->SetDrawCoords(400, -285, -1, -1);
+		// Center logo on 1280px display
+		flameLeft->SetDrawCoords(640, -285, -1, -1);
+		flameRight->SetDrawCoords(640, -285, -1, -1);
+		blackLeft->SetDrawCoords(640, -285, -1, -1);
+		blackRight->SetDrawCoords(640, -285, -1, -1);
 
 		versionText = engine->renderer->AllocateObject(1);
 		versionText->AttachFontResource(cl.font16);
 		versionText->SetText(GAME_FULL_UTF16);
-		versionText->SetDrawCoords(20, 560, 0, 0);
+		versionText->SetDrawCoords(20, 695, 0, 0);
 
 		m_panel = new D2Panels::OtherMultiplayer();
 		AddPanel(m_panel);
@@ -88,5 +91,16 @@ namespace D2Menus
 		versionText->Draw();
 
 		DrawAllPanels();
+	}
+
+	bool OtherMultiplayer::HandleKeyDown(DWORD dwKey)
+	{
+		if (dwKey == 27) // Escape
+		{
+			delete cl.pActiveMenu;
+			cl.pActiveMenu = new Main();
+			return true;
+		}
+		return D2Menu::HandleKeyDown(dwKey);
 	}
 }

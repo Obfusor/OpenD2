@@ -56,6 +56,9 @@ void D2InputBindings::LoadDefaults()
     SetBind(BIND_SWAP_WEAPONS, 'w', 0);
     SetBind(BIND_RUN_TOGGLE, 'r', KEYMOD_CTRL);
     SetBind(BIND_CLEAR_SCREEN, 1073741897, 0); // Escape mapped to space/esc
+
+    // Editor
+    SetBind(BIND_TOGGLE_EDITOR, 1073741893, 0); // F12
 }
 
 void D2InputBindings::LoadFromConfig()
@@ -265,6 +268,13 @@ void D2Input_HandleBindAction(D2BindAction action)
             pIngame->GetChatPanel()->Hide();
         }
         break;
+
+#ifdef ENABLE_EDITOR
+    case BIND_TOGGLE_EDITOR:
+        // TODO: Toggle editor overlay when EditorOverlay is implemented (Phase 8)
+        engine->Print(PRIORITY_MESSAGE, "Editor toggle (F12) - not yet implemented");
+        break;
+#endif
 
     default:
         break;

@@ -4,11 +4,9 @@
 #include <vector>
 #include <string>
 
-#ifdef USE_ALLEGRO5
 #include <allegro5/allegro.h>
 #include <allegro5/allegro_primitives.h>
 #include <allegro5/allegro_font.h>
-#endif
 
 /*
  *	MapRenderer - Renders DS1 maps using real DT1 tile graphics
@@ -63,9 +61,7 @@ private:
 	void BuildTileLookupFromEditor();
 	const TileEntry *FindTile(long orientation, long mainIndex, long subIndex);
 
-#ifdef USE_ALLEGRO5
 	ALLEGRO_BITMAP *DecodeTileBitmap(handle dt1, int blockIndex, int act);
-#endif
 
 	// Map state
 	handle m_ds1Handle;
@@ -78,9 +74,7 @@ private:
 	std::map<TileKey, std::vector<TileEntry>> m_tileLookup;
 
 	// Tile bitmap cache: (dt1Handle * 100000 + blockIndex) -> bitmap
-#ifdef USE_ALLEGRO5
 	std::map<uint64_t, ALLEGRO_BITMAP *> m_tileCache;
-#endif
 
 	// Camera
 	float m_cameraX;

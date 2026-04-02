@@ -193,6 +193,12 @@ public:
 	virtual float GetCapHeight() { return 0.0f; }
 
 	/**
+	 *	Returns the source file path (e.g., "data\\global\\ui\\FrontEnd\\foo.dc6").
+	 *	Used by the renderer to locate pre-converted PNG frames.
+	 */
+	virtual const char* GetSourcePath() { return nullptr; }
+
+	/**
 	 *	Specifies what to do when we have been deallocated.
 	 */
 	virtual void Deallocate() = 0;
@@ -269,6 +275,7 @@ public:
 	virtual void GetGraphicsInfo(bool bAtlassing, int32_t start, int32_t end, uint32_t* width, uint32_t* height);
 	virtual void IterateFrames(bool bAtlassing, int32_t start, int32_t end, AtlassingCallback callback);
 	virtual void GetAtlasInfo(int32_t frame, uint32_t* x, uint32_t* y, uint32_t* totalWidth, uint32_t* totalHeight, int directionNumber = -1);
+	virtual const char* GetSourcePath() override { return filePath; }
 	virtual void Deallocate();
 };
 

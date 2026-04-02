@@ -115,10 +115,13 @@ namespace D2Widgets
 		text->AttachFontResource(font);
 		text->SetText(szText);
 		text->SetDrawMode(4);
+		text->SetTextColor(6); // TextColor_Black - matches original D2
 
-		int32_t width, height;
-		text->GetDrawCoords(nullptr, nullptr, &width, &height);
-		text->SetDrawCoords(m_pOwner->x + (x + (w / 2)) - (width / 2), m_pOwner->y + y + (h / 2) - (height / 2), 0, 0);
+		// Center text within the button bounds using alignment
+		int btnX = m_pOwner ? (m_pOwner->x + x) : x;
+		int btnY = m_pOwner ? (m_pOwner->y + y) : y;
+		text->SetDrawCoords(btnX, btnY, w, h);
+		text->SetTextAlignment(btnX, btnY, w, h, 1, 0); // 1 = ALIGN_CENTER
 	}
 
 	/*

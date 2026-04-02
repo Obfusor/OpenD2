@@ -9,8 +9,6 @@
 //
 //////////////////////////////////////////////////
 
-#ifdef USE_ALLEGRO5
-
 #ifdef _WIN32
 // Windows: use bundled headers from Libraries/allegro5/
 #include "../Libraries/allegro5/include/allegro5/allegro.h"
@@ -41,5 +39,3 @@
 // Message box type constants (matching SDL values for source compatibility)
 #define D2_MESSAGEBOX_WARNING    0x00000020
 #define D2_MESSAGEBOX_ERROR      0x00000010
-
-#endif // USE_ALLEGRO5

@@ -1,12 +1,7 @@
 #pragma once
 #include "../Shared/D2Shared.hpp"
 #include "../Shared/D2Packets.hpp"
-
-#ifdef USE_ALLEGRO5
 #include "Allegro5.hpp"
-#else
-#include "../Libraries/sdl/SDL.h"
-#endif
 
 enum D2CommandType
 {

@@ -130,15 +130,9 @@ static D2ModuleImportStrc exports = {
 	Network::StopListening,
 	Sys::GetAdapterIP,
 
-#ifdef USE_ALLEGRO5
 	IN::PumpEvents,
 	IN::StartTextEditing,
 	IN::StopTextEditing,
-#else
-	IN::PumpEvents,
-	SDL_StartTextInput,
-	SDL_StopTextInput,
-#endif
 
 	TBL::Register,
 	TBL::FindStringFromIndex,
@@ -180,11 +174,7 @@ static D2ModuleExportStrc *imports[MODULE_MAX]{0};
  */
 DWORD GetMilliseconds()
 {
-#ifdef USE_ALLEGRO5
 	return (DWORD)(al_get_time() * 1000.0);
-#else
-	return SDL_GetTicks();
-#endif
 }
 
 /*
@@ -472,11 +462,7 @@ int InitGame(int argc, char **argv)
 
 	graphicsManager = new GraphicsManager();
 
-#ifdef USE_ALLEGRO5
 	Window::InitAllegro(&config, &openD2Config); // renderer also gets initialized here
-#else
-	Window::InitSDL(&config, &openD2Config); // renderer also gets initialized here
-#endif
 	exports.graphics = graphicsManager;
 	Renderer::MapRenderTargetExports(&exports);
 	Audio::Init(&openD2Config);
@@ -558,22 +544,14 @@ int InitGame(int argc, char **argv)
 		// The latter is handled below.
 		if (dwFrameMsec > 0)
 		{
-#ifdef USE_ALLEGRO5
 			al_rest(dwFrameMsec / 1000.0);
-#else
-			SDL_Delay(dwFrameMsec);
-#endif
 		}
 	}
 
 	CleanupAllModules();
 
 	Audio::Shutdown();
-#ifdef USE_ALLEGRO5
 	Window::ShutdownAllegro(); // renderer also gets shut down here
-#else
-	Window::ShutdownSDL(); // renderer also gets shut down here
-#endif
 
 	Network::Shutdown();
 	WriteGameConfig(&config, &openD2Config);

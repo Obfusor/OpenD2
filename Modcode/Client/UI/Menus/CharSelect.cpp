@@ -1,4 +1,5 @@
 #include "CharSelect.hpp"
+#include "Main.hpp"
 #include "Loading.hpp"
 
 static char *gszTokenNames[D2CLASS_MAX] = {
@@ -26,7 +27,8 @@ namespace D2Menus
 		backgroundTexture = engine->graphics->CreateReference("data\\global\\ui\\CharSelect\\characterselectscreenEXP.dc6", UsagePolicy_SingleUse);
 		backgroundObject = engine->renderer->AllocateObject(0);
 		backgroundObject->AttachCompositeTextureResource(backgroundTexture, 0, -1);
-		backgroundObject->SetDrawCoords(0, 0, 800, 600);
+		// Fill-and-crop: scale 800x600 to fill 1280x720
+		backgroundObject->SetDrawCoords(0, -120, 1280, 960);
 
 		// Create the panels and add them to the menu panel list
 		m_charSelectPanel = new D2Panels::CharSelect();
@@ -131,5 +133,16 @@ namespace D2Menus
 		cl.nLoadState = 0;
 
 		return true;
+	}
+
+	bool CharSelect::HandleKeyDown(DWORD dwKey)
+	{
+		if (dwKey == 27) // Escape
+		{
+			delete cl.pActiveMenu;
+			cl.pActiveMenu = new Main();
+			return true;
+		}
+		return D2Menu::HandleKeyDown(dwKey);
 	}
 }

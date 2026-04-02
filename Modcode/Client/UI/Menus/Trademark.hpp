@@ -25,6 +25,7 @@ namespace D2Menus
 		virtual ~Trademark();
 
 		virtual bool HandleMouseClicked(DWORD dwX, DWORD dwY);
+		virtual bool HandleKeyDown(DWORD dwKey);
 		virtual void Tick(DWORD dwDeltaMs) override;
 
 		virtual void Draw();

@@ -1,4 +1,5 @@
 #include "CharCreate.hpp"
+#include "Main.hpp"
 #include "../Panels/CharCreate.hpp"
 #include <time.h>
 
@@ -458,6 +459,13 @@ namespace D2Menus
 	 */
 	bool CharCreate::HandleKeyDown(DWORD dwKey)
 	{
+		if (dwKey == 27) // Escape
+		{
+			delete cl.pActiveMenu;
+			cl.pActiveMenu = new D2Menus::Main();
+			return true;
+		}
+
 		D2Menu::HandleKeyDown(dwKey);
 
 		// check the length of the text entry field

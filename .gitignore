@@ -40,7 +40,7 @@ D2Common.dir/*
 D2Game.dir/*
 D2[0-9][0-9][0-9][0-9][0-9][0-9].txt
 D2.ini
-game
+/game
 
 # CMake
 CMakeCache.txt
@@ -60,6 +60,9 @@ CTestTestfile.cmake
 .vscode/
 .d2workshop/
 .claude/
+
+# Game data (extracted assets, converted PNGs)
+data/
 
 # Tools - extracted data and build artifacts
 Tools/D2SaveParser/extracted/

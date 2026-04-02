@@ -24,6 +24,7 @@ namespace D2Menus
 		void DeleteCanceled();
 
 		bool CharacterChosen();
+		virtual bool HandleKeyDown(DWORD dwKey);
 		virtual void Draw();
 	};
 }

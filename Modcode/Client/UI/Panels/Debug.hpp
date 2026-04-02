@@ -8,7 +8,7 @@ namespace D2Panels
 	{
 	private:
 		D2Widgets::Button* m_loadEncampmentButton;
-
+		D2Widgets::Button* m_mapBrowserButton;
 		D2Widgets::Button* m_exitButton;
 
 	public:

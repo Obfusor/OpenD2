@@ -16,8 +16,6 @@ namespace D2Panels
 		D2Widgets::Button* m_battleNetButton;
 		D2Widgets::Button* m_gatewayButton;
 		D2Widgets::Button* m_multiplayerButton;
-		D2Widgets::Button* m_creditsButton;
-		D2Widgets::Button* m_cinematicsButton;
 		D2Widgets::Button* m_exitButton;
 
 #ifdef _DEBUG

@@ -3,7 +3,6 @@
 #include <cstring>
 #include <cstdio>
 
-#ifdef USE_ALLEGRO5
 #include <allegro5/allegro.h>
 #include <allegro5/allegro_font.h>
 #include <allegro5/allegro_primitives.h>
@@ -70,7 +69,6 @@ static void EnsureFont()
 	if (s_pFont == nullptr)
 		s_pFont = al_create_builtin_font();
 }
-#endif
 
 MapRenderer *gpMapRenderer = nullptr;
 char s_tileDebug[256] = "";
@@ -88,14 +86,12 @@ MapRenderer::~MapRenderer()
 
 void MapRenderer::UnloadMap()
 {
-#ifdef USE_ALLEGRO5
 	for (auto &pair : m_tileCache)
 	{
 		if (pair.second)
 			al_destroy_bitmap(pair.second);
 	}
 	m_tileCache.clear();
-#endif
 
 	m_tileLookup.clear();
 	m_loadedDT1s.clear();
@@ -108,7 +104,6 @@ bool MapRenderer::LoadMap(const char *relativePath)
 {
 	UnloadMap();
 
-#ifdef USE_ALLEGRO5
 	// Initialize editor bridge if not done yet
 	if (!s_editorInited)
 	{
@@ -146,7 +141,6 @@ bool MapRenderer::LoadMap(const char *relativePath)
 
 	engine->Print(PRIORITY_MESSAGE, "MapRenderer: Ready - %dx%d, Act %d, %d tile keys, editor ds1=%d",
 		m_mapWidth, m_mapHeight, m_act, (int)m_tileLookup.size(), editorDs1);
-#endif
 
 	return true;
 }
@@ -160,7 +154,6 @@ const TileEntry *MapRenderer::FindTile(long orientation, long mainIndex, long su
 	return &it->second[0];
 }
 
-#ifdef USE_ALLEGRO5
 void MapRenderer::BuildTileLookupFromEditor()
 {
 	m_tileLookup.clear();
@@ -267,9 +260,9 @@ ALLEGRO_BITMAP *MapRenderer::DecodeTileBitmap(handle dt1Handle, int blockIndex, 
 				}
 				else if (pal)
 				{
-					BYTE r = (*pal)[idx][0];
+					BYTE b = (*pal)[idx][0]; // pal.dat stores BGR
 					BYTE g = (*pal)[idx][1];
-					BYTE b = (*pal)[idx][2];
+					BYTE r = (*pal)[idx][2];
 					dst[x] = 0xFF000000 | (b << 16) | (g << 8) | r; // ABGR
 				}
 				else
@@ -284,7 +277,6 @@ ALLEGRO_BITMAP *MapRenderer::DecodeTileBitmap(handle dt1Handle, int blockIndex, 
 	m_tileCache[cacheKey] = bmp;
 	return bmp;
 }
-#endif
 
 void MapRenderer::CenterCamera()
 {
@@ -349,7 +341,6 @@ bool MapRenderer::HandleKeyDown(DWORD keyCode)
 
 void MapRenderer::Draw()
 {
-#ifdef USE_ALLEGRO5
 	engine->renderer->Clear();
 
 	if (m_ds1Handle == INVALID_HANDLE || m_mapWidth == 0 || m_mapHeight == 0)
@@ -458,5 +449,4 @@ void MapRenderer::Draw()
 	}
 
 	engine->renderer->Present();
-#endif
 }

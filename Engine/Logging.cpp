@@ -4,15 +4,13 @@
 #include "Platform.hpp"
 #include "Window.hpp"
 #include <time.h>
+#include <cstdio>
 
-#ifdef USE_ALLEGRO5
-// Use our own constants since SDL headers aren't available
+// Message box type constants
 #ifndef SDL_MESSAGEBOX_WARNING
 #define SDL_MESSAGEBOX_WARNING   D2_MESSAGEBOX_WARNING
 #define SDL_MESSAGEBOX_ERROR     D2_MESSAGEBOX_ERROR
 #endif
-#endif
-#include <cstdio>
 
 ///////////////////////////////////////////////////////////
 //
@@ -196,9 +194,6 @@ namespace Log
 
 		// pull us out of the main game loop
 		currentModule = MODULE_NONE;
-#ifdef _DEBUG
-		SDL_assert(0);
-#endif
 
 		exit(1);
 	}

@@ -17,9 +17,10 @@ namespace D2Panels
 	 */
 	OtherMultiplayer::OtherMultiplayer() : D2Panel()
 	{
-		m_openBattleNetButton = new D2Widgets::Button(265, 275, MAIN_BUTTON_DC6, "3wide", 0, 1, 2, 3, 4, 5);
-		m_TCPIPButton = new D2Widgets::Button(265, 315, MAIN_BUTTON_DC6, "3wide", 0, 1, 2, 3, 4, 5);
-		m_cancelButton = new D2Widgets::Button(265, 530, MAIN_BUTTON_DC6, "3wide", 0, 1, 2, 3, 4, 5);
+		// Center buttons on 1280px display: (1280 - 272) / 2 = 504
+		m_openBattleNetButton = new D2Widgets::Button(504, 335, MAIN_BUTTON_DC6, "3wide", 0, 1, 2, 3, 4, 5);
+		m_TCPIPButton = new D2Widgets::Button(504, 375, MAIN_BUTTON_DC6, "3wide", 0, 1, 2, 3, 4, 5);
+		m_cancelButton = new D2Widgets::Button(504, 595, MAIN_BUTTON_DC6, "3wide", 0, 1, 2, 3, 4, 5);
 
 		AddWidget(m_openBattleNetButton);
 		AddWidget(m_TCPIPButton);

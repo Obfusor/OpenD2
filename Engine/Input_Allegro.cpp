@@ -1,5 +1,9 @@
-#ifdef USE_ALLEGRO5
 #include "Diablo2.hpp"
+#include "imgui.h"
+#include "imgui_impl_allegro5.h"
+
+// ImGui overlay toggle (engine-level, toggled by F12)
+bool g_showImGuiOverlay = false;
 
 #define MAX_INPUT_COMMANDS 512
 
@@ -189,8 +193,31 @@ namespace IN
 
 		while (al_get_next_event(queue, &ev))
 		{
+			// Pass all events to ImGui
+			ImGui_ImplAllegro5_ProcessEvent(&ev);
+
 			if (gdwNumProcessedCommands >= MAX_INPUT_COMMANDS)
 				break;
+
+			// F12 toggles ImGui overlay (engine-level, before game processing)
+			if (ev.type == ALLEGRO_EVENT_KEY_DOWN && ev.keyboard.keycode == ALLEGRO_KEY_F12)
+			{
+				g_showImGuiOverlay = !g_showImGuiOverlay;
+				continue;
+			}
+
+			// If ImGui wants input, don't pass to game
+			ImGuiIO &io = ImGui::GetIO();
+			if (io.WantCaptureMouse &&
+				(ev.type == ALLEGRO_EVENT_MOUSE_AXES ||
+				 ev.type == ALLEGRO_EVENT_MOUSE_BUTTON_DOWN ||
+				 ev.type == ALLEGRO_EVENT_MOUSE_BUTTON_UP))
+				continue;
+			if (io.WantCaptureKeyboard &&
+				(ev.type == ALLEGRO_EVENT_KEY_DOWN ||
+				 ev.type == ALLEGRO_EVENT_KEY_UP ||
+				 ev.type == ALLEGRO_EVENT_KEY_CHAR))
+				continue;
 
 			switch (ev.type)
 			{
@@ -315,4 +342,3 @@ namespace IN
 		pOpenConfig->dwNumPendingCommands = gdwNumProcessedCommands;
 	}
 }
-#endif // USE_ALLEGRO5

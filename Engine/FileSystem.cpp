@@ -3,21 +3,12 @@
 #include "FileSystem_MPQ.hpp"
 #include "MPQ.hpp"
 #include "Platform.hpp"
-#ifdef USE_ALLEGRO5
 #include "Allegro5.hpp"
 typedef ALLEGRO_MUTEX D2Mutex;
 static inline D2Mutex* D2_CreateMutex() { return al_create_mutex(); }
 static inline void D2_LockMutex(D2Mutex* m) { if (m) al_lock_mutex(m); }
 static inline void D2_UnlockMutex(D2Mutex* m) { if (m) al_unlock_mutex(m); }
 static inline void D2_DestroyMutex(D2Mutex* m) { if (m) al_destroy_mutex(m); }
-#else
-#include "../Libraries/sdl/SDL_thread.h"
-typedef SDL_mutex D2Mutex;
-static inline D2Mutex* D2_CreateMutex() { return D2_CreateMutex(); }
-static inline void D2_LockMutex(D2Mutex* m) { D2_LockMutex(m); }
-static inline void D2_UnlockMutex(D2Mutex* m) { D2_UnlockMutex(m); }
-static inline void D2_DestroyMutex(D2Mutex* m) { D2_DestroyMutex(m); }
-#endif
 #include <assert.h>
 
 /*

@@ -2,14 +2,20 @@
 
 D2Widget::D2Widget()
 {
+	m_pOwner = nullptr;
 	m_pNextVisibleWidget = nullptr;
 	m_pNextWidget = nullptr;
+	x = 0;
+	y = 0;
+	w = 0;
+	h = 0;
 	m_bVisible = false;
 	bHasIdentifier = false;
 }
 
 D2Widget::D2Widget(int _x, int _y, int _w, int _h)
 {
+	m_pOwner = nullptr;
 	m_pNextVisibleWidget = nullptr;
 	m_pNextWidget = nullptr;
 	x = _x;

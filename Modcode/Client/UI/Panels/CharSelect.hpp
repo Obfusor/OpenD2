@@ -12,7 +12,6 @@ namespace D2Panels
 	private:
 		D2Widgets::Button* createCharButton;
 		D2Widgets::Button* deleteCharButton;
-		D2Widgets::Button* convertExpansionButton;
 
 		D2Widgets::Button* okButton;
 		D2Widgets::Button* exitButton;

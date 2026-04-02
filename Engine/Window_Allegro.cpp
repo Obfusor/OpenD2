@@ -1,8 +1,9 @@
-#ifdef USE_ALLEGRO5
 #include "Diablo2.hpp"
 #include "DCC.hpp"
 #include "Logging.hpp"
 #include "Renderer.hpp"
+#include "imgui.h"
+#include "imgui_impl_allegro5.h"
 
 ///////////////////////////////////////////////////////
 //
@@ -76,6 +77,14 @@ namespace Window
 
 		// Initialize renderer
 		Renderer::Init(pConfig, pOpenConfig, gpDisplay);
+
+		// Initialize Dear ImGui
+		IMGUI_CHECKVERSION();
+		ImGui::CreateContext();
+		ImGuiIO &io = ImGui::GetIO();
+		io.ConfigFlags |= ImGuiConfigFlags_NavEnableKeyboard;
+		ImGui::StyleColorsDark();
+		ImGui_ImplAllegro5_Init(gpDisplay);
 	}
 
 	/*
@@ -83,6 +92,9 @@ namespace Window
 	 */
 	void ShutdownAllegro()
 	{
+		ImGui_ImplAllegro5_Shutdown();
+		ImGui::DestroyContext();
+
 		DCC::GlobalShutdown();
 		delete RenderTarget;
 
@@ -122,4 +134,3 @@ namespace Window
 		return true;
 	}
 }
-#endif // USE_ALLEGRO5

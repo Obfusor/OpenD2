@@ -22,6 +22,7 @@ namespace D2Menus
 		OtherMultiplayer();
 		virtual ~OtherMultiplayer();
 
+		virtual bool HandleKeyDown(DWORD dwKey);
 		virtual void Draw();
 	};
 }
