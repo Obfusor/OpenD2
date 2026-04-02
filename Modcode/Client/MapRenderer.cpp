@@ -223,24 +223,21 @@ ALLEGRO_BITMAP *MapRenderer::DecodeTileBitmap(handle dt1Handle, int blockIndex, 
 		return nullptr;
 	}
 
-	// DEBUG: count non-zero pixels and also check raw data pointer
+	// Count non-zero pixels for the first few tiles (debug HUD)
 	static int dbgChecked = 0;
-	if (dbgChecked < 1)
+	if (dbgChecked < 5)
 	{
 		int nonZero = 0;
-		int nonZeroData = 0;
 		for (int y = 0; y < srcBmp->h; y++)
 			for (int x = 0; x < srcBmp->w; x++)
 				if (srcBmp->line[y][x] != 0) nonZero++;
-		// Also check via data pointer directly
-		if (srcBmp->data)
-			for (int i = 0; i < srcBmp->w * srcBmp->h; i++)
-				if (srcBmp->data[i] != 0) nonZeroData++;
-		snprintf(s_tileDebug, sizeof(s_tileDebug),
-			"TileDbg: dt1=%d blk=%d %dx%d line_nz=%d data_nz=%d data=%p line=%p line[0]=%p",
-			dt1Idx, blockIndex, srcBmp->w, srcBmp->h, nonZero, nonZeroData,
-			(void*)srcBmp->data, (void*)srcBmp->line,
-			srcBmp->line ? (void*)srcBmp->line[0] : NULL);
+		if (nonZero > 0)
+		{
+			snprintf(s_tileDebug, sizeof(s_tileDebug),
+				"TileOK: dt1=%d blk=%d %dx%d nz=%d/%d",
+				dt1Idx, blockIndex, srcBmp->w, srcBmp->h, nonZero, srcBmp->w * srcBmp->h);
+			dbgChecked = 5; // stop checking
+		}
 		dbgChecked++;
 	}
 
@@ -401,11 +398,6 @@ void MapRenderer::Draw()
 			{
 				al_draw_bitmap(tileBmp, sx, sy, 0);
 				dbgDrawn++;
-
-				// DEBUG: draw green outline at each drawn tile so we can see positioning
-				al_draw_rectangle(sx, sy, sx + al_get_bitmap_width(tileBmp),
-					sy + al_get_bitmap_height(tileBmp),
-					al_map_rgba(0, 255, 0, 100), 1.0f);
 			}
 		}
 	}
