@@ -168,6 +168,8 @@ AllegroRenderObject::AllegroRenderObject()
 	  m_animFrames(nullptr), m_animFramesOwned(false), m_animFrameCount(0), m_animCurrentFrame(0),
 	  m_lastDrawTime(0), m_animFramerate(25.0f), m_animLoop(true),
 	  m_frameOffsetX(nullptr), m_frameOffsetY(nullptr),
+	  m_tokenRef(nullptr), m_tokenMode(PLRMODE_TN), m_tokenHitClass(WC_HTH),
+	  m_tokenDirection(0), m_tokenDirty(false),
 	  m_fontRef(nullptr), m_textColor(0),
 	  m_textAlignX(0), m_textAlignY(0), m_textAlignW(0), m_textAlignH(0),
 	  m_horzAlign(0), m_vertAlign(0),
@@ -175,6 +177,7 @@ AllegroRenderObject::AllegroRenderObject()
 	  m_drawMode(0), m_palshift(0)
 {
 	memset(m_textBuf, 0, sizeof(m_textBuf));
+	memset(m_tokenArmorLevel, 0, sizeof(m_tokenArmorLevel));
 }
 
 void AllegroRenderObject::Reset()
@@ -214,6 +217,8 @@ void AllegroRenderObject::Reset()
 	m_texture = nullptr;
 	m_animFrameCount = 0;
 	m_animCurrentFrame = 0;
+	m_tokenRef = nullptr;
+	m_tokenDirty = false;
 	m_fontRef = nullptr;
 	memset(m_textBuf, 0, sizeof(m_textBuf));
 }
@@ -450,9 +455,10 @@ void AllegroRenderObject::AttachAnimationResource(IGraphicsReference *ref, bool 
 
 ///////////////////////////////////////////////////////
 //
-//	AttachTokenResource — basic single-layer rendering
-//	Loads the torso (TR) DCC for the token's current mode/hitclass
-//	and displays as an animation. Full COF multi-layer composition deferred.
+//	AttachTokenResource — multi-layer character rendering
+//	Stores token ref and settings. Actual DCC loading deferred
+//	to LoadTokenLayers() which is called on first Draw or when
+//	mode/hitclass/armor changes.
 //
 
 void AllegroRenderObject::AttachTokenResource(ITokenReference *ref)
@@ -461,15 +467,109 @@ void AllegroRenderObject::AttachTokenResource(ITokenReference *ref)
 	if (!ref || !m_pRenderer)
 		return;
 
-	// Get the torso graphic for TN (town neutral) / HTH (hand to hand) with "lit" armor
-	IGraphicsReference *trGraphic = ref->GetTokenGraphic(COMP_TORSO, WC_HTH, PLRMODE_TN, "lit");
-	if (!trGraphic)
+	m_tokenRef = ref;
+	m_tokenMode = PLRMODE_TN; // default
+	m_tokenHitClass = WC_HTH; // default
+	m_tokenDirection = 0;
+	m_tokenDirty = true;
+	m_type = RT_TOKEN;
+
+	// Initialize all armor levels to "lit" (base appearance)
+	for (int i = 0; i < COMP_MAX; i++)
+		strncpy(m_tokenArmorLevel[i], "lit", sizeof(m_tokenArmorLevel[i]));
+}
+
+void AllegroRenderObject::LoadTokenLayers()
+{
+	if (!m_tokenRef || !m_pRenderer)
 		return;
 
-	// Use the DCC runtime decode path via AttachAnimationResource
-	// trGraphic is a DCCReference — AttachAnimationResource handles DCC decode
-	AttachAnimationResource(trGraphic, true);
-	m_animFramerate = 12.0f; // Town neutral is slow idle
+	// Free previous animation frames if any
+	if (m_animFrames)
+	{
+		if (m_animFramesOwned)
+		{
+			for (int i = 0; i < m_animFrameCount; i++)
+			{
+				if (m_animFrames[i])
+					al_destroy_bitmap(m_animFrames[i]);
+			}
+		}
+		free(m_animFrames);
+		m_animFrames = nullptr;
+	}
+	if (m_frameOffsetX) { free(m_frameOffsetX); m_frameOffsetX = nullptr; }
+	if (m_frameOffsetY) { free(m_frameOffsetY); m_frameOffsetY = nullptr; }
+	m_animFrameCount = 0;
+
+	// Try loading components in render order: legs, torso, head, arms
+	// For simplicity, find the first component that loads successfully
+	static const int componentOrder[] = {
+		COMP_TORSO, COMP_LEGS, COMP_HEAD, COMP_RIGHTARM, COMP_LEFTARM,
+		COMP_RIGHTHAND, COMP_LEFTHAND, COMP_SHIELD
+	};
+
+	IGraphicsReference *graphic = nullptr;
+	for (int i = 0; i < 8 && !graphic; i++)
+	{
+		int comp = componentOrder[i];
+		graphic = m_tokenRef->GetTokenGraphic(comp, m_tokenHitClass,
+			m_tokenMode, m_tokenArmorLevel[comp]);
+	}
+
+	if (!graphic)
+		return;
+
+	// Decode the DCC using the animation path
+	g_dccDecodePalette = Pal::GetPalette(m_pRenderer->GetGlobalPalette());
+	std::vector<ALLEGRO_BITMAP *> decodedFrames;
+	g_dccFrameBitmaps = &decodedFrames;
+
+	graphic->LoadSingleDirection(m_tokenDirection, DCC_AllocCallback, DCC_DecodeCallback);
+
+	g_dccFrameBitmaps = nullptr;
+
+	if (g_dccDecodeBitmap)
+	{
+		al_destroy_bitmap(g_dccDecodeBitmap);
+		g_dccDecodeBitmap = nullptr;
+	}
+
+	int decoded = (int)decodedFrames.size();
+	if (decoded <= 0)
+		return;
+
+	m_animFrameCount = decoded;
+	m_animFramesOwned = true;
+	m_animFrames = (ALLEGRO_BITMAP **)calloc(decoded, sizeof(ALLEGRO_BITMAP *));
+	m_frameOffsetX = (int *)calloc(decoded, sizeof(int));
+	m_frameOffsetY = (int *)calloc(decoded, sizeof(int));
+
+	if (!m_animFrames || !m_frameOffsetX || !m_frameOffsetY)
+		return;
+
+	for (int i = 0; i < decoded; i++)
+	{
+		m_animFrames[i] = decodedFrames[i];
+
+		uint32_t fw = 0, fh = 0;
+		int32_t offX = 0, offY = 0;
+		graphic->GetGraphicsData(nullptr, i, &fw, &fh, &offX, &offY);
+		m_frameOffsetX[i] = offX;
+		m_frameOffsetY[i] = offY;
+
+		if (i == 0 && m_w <= 0 && m_animFrames[i])
+		{
+			m_w = al_get_bitmap_width(m_animFrames[i]);
+			m_h = al_get_bitmap_height(m_animFrames[i]);
+		}
+	}
+
+	m_animCurrentFrame = 0;
+	m_lastDrawTime = al_get_time();
+	m_animFramerate = 12.0f;
+	m_animLoop = true;
+	m_tokenDirty = false;
 }
 
 ///////////////////////////////////////////////////////
@@ -650,6 +750,46 @@ void AllegroRenderObject::Draw()
 		}
 		break;
 
+	case RT_TOKEN:
+		// Lazy-load DCC layers when dirty
+		if (m_tokenDirty)
+			LoadTokenLayers();
+
+		// Render like RT_ANIMATION
+		if (m_animFrames && m_animCurrentFrame < m_animFrameCount)
+		{
+			ALLEGRO_BITMAP *frame = m_animFrames[m_animCurrentFrame];
+			if (frame)
+			{
+				float drawX = (float)(m_x + m_frameOffsetX[m_animCurrentFrame]);
+				float drawY = (float)(m_y + m_frameOffsetY[m_animCurrentFrame]);
+				al_draw_tinted_bitmap(frame, tint, drawX, drawY, 0);
+			}
+
+			double now = al_get_time();
+			double delta = now - m_lastDrawTime;
+			if (m_lastDrawTime == 0)
+				delta = 0;
+			m_lastDrawTime = now;
+
+			if (m_animFramerate > 0 && delta > 0)
+			{
+				double frameDuration = 1.0 / (double)m_animFramerate;
+				if (delta >= frameDuration)
+				{
+					m_animCurrentFrame += (int)(delta / frameDuration);
+					if (m_animCurrentFrame >= m_animFrameCount)
+					{
+						if (m_animLoop)
+							m_animCurrentFrame %= m_animFrameCount;
+						else
+							m_animCurrentFrame = m_animFrameCount - 1;
+					}
+				}
+			}
+		}
+		break;
+
 	case RT_FONT_TEXT:
 	{
 		if (m_textBuf[0] == 0)
@@ -814,24 +954,47 @@ void AllegroRenderObject::RemoveAnimationFinishCallbacks()
 
 void AllegroRenderObject::SetAnimationDirection(int direction)
 {
-	(void)direction;
-	// TODO: multi-direction animation support
+	if (m_type == RT_TOKEN && direction != m_tokenDirection)
+	{
+		m_tokenDirection = direction;
+		m_tokenDirty = true;
+	}
 }
 
 void AllegroRenderObject::SetTokenMode(int newMode)
 {
-	(void)newMode;
+	if (m_type == RT_TOKEN && newMode != m_tokenMode)
+	{
+		m_tokenMode = newMode;
+		m_tokenDirty = true;
+	}
+	else
+	{
+		m_tokenMode = newMode;
+	}
 }
 
 void AllegroRenderObject::SetTokenArmorLevel(int component, const char *armorLevel)
 {
-	(void)component;
-	(void)armorLevel;
+	if (component >= 0 && component < COMP_MAX && armorLevel)
+	{
+		strncpy(m_tokenArmorLevel[component], armorLevel, sizeof(m_tokenArmorLevel[component]) - 1);
+		if (m_type == RT_TOKEN)
+			m_tokenDirty = true;
+	}
 }
 
 void AllegroRenderObject::SetTokenHitClass(int hitclass)
 {
-	(void)hitclass;
+	if (m_type == RT_TOKEN && hitclass != m_tokenHitClass)
+	{
+		m_tokenHitClass = hitclass;
+		m_tokenDirty = true;
+	}
+	else
+	{
+		m_tokenHitClass = hitclass;
+	}
 }
 
 ///////////////////////////////////////////////////////

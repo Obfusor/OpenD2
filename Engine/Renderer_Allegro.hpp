@@ -15,7 +15,7 @@ class AllegroRenderObject : public IRenderObject
 {
 	friend class Renderer_Allegro;
 private:
-	enum RenderType { RT_NONE, RT_TEXTURE, RT_COMPOSITE, RT_ANIMATION, RT_FONT_TEXT };
+	enum RenderType { RT_NONE, RT_TEXTURE, RT_COMPOSITE, RT_ANIMATION, RT_FONT_TEXT, RT_TOKEN };
 
 	// Core state
 	int m_x, m_y, m_w, m_h;
@@ -45,6 +45,15 @@ private:
 	int m_textColor;
 	int m_textAlignX, m_textAlignY, m_textAlignW, m_textAlignH;
 	int m_horzAlign, m_vertAlign;
+
+	// RT_TOKEN: character token with multi-layer DCC composition
+	ITokenReference *m_tokenRef;
+	int m_tokenMode;
+	int m_tokenHitClass;
+	int m_tokenDirection;
+	char m_tokenArmorLevel[COMP_MAX][8];
+	bool m_tokenDirty; // needs to reload DCCs when settings change
+	void LoadTokenLayers();
 
 	// Shared properties
 	float m_colorR, m_colorG, m_colorB, m_colorA;
