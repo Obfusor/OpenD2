@@ -24,10 +24,30 @@ namespace Audio
 	static float gMasterVolume = 1.0f;
 	static float gMusicVolume = 0.7f;
 	static float gSoundVolume = 1.0f;
+	static char gBasePath[1024] = "";
+
+	// Build full path from basepath + relative audio path
+	static void ResolveAudioPath(const char *relPath, char *outPath, size_t outLen)
+	{
+		snprintf(outPath, outLen, "%s%s", gBasePath, relPath);
+		// Normalize backslashes
+		for (char *p = outPath; *p; p++)
+			if (*p == '\\') *p = '/';
+	}
 
 	void Init(OpenD2ConfigStrc *openconfig)
 	{
-		(void)openconfig;
+		// Store basepath for file resolution
+		if (openconfig && openconfig->szBasePath[0])
+		{
+			snprintf(gBasePath, sizeof(gBasePath), "%s", openconfig->szBasePath);
+			size_t len = strlen(gBasePath);
+			if (len > 0 && gBasePath[len - 1] != '/' && gBasePath[len - 1] != '\\')
+			{
+				gBasePath[len] = '/';
+				gBasePath[len + 1] = '\0';
+			}
+		}
 
 		if (!al_install_audio())
 		{
@@ -114,14 +134,12 @@ namespace Audio
 		if (!bInitialized || !szAudioFile || gnNumSamples >= MAX_SOUNDS)
 			return INVALID_HANDLE;
 
-		// Try loading the file directly via Allegro (searches working directory)
-		ALLEGRO_SAMPLE *sample = al_load_sample(szAudioFile);
+		char fullPath[1024];
+		ResolveAudioPath(szAudioFile, fullPath, sizeof(fullPath));
+
+		ALLEGRO_SAMPLE *sample = al_load_sample(fullPath);
 		if (!sample)
-		{
-			// Try with basepath prepended
-			// Sound files might be at basepath + audioFile
 			return INVALID_HANDLE;
-		}
 
 		sfx_handle h = gnNumSamples;
 		gpSamples[gnNumSamples] = sample;
@@ -134,7 +152,10 @@ namespace Audio
 		if (!bInitialized || !szAudioFile || gnNumMusic >= MAX_MUSIC)
 			return INVALID_HANDLE;
 
-		ALLEGRO_AUDIO_STREAM *stream = al_load_audio_stream(szAudioFile, 4, 2048);
+		char fullPath[1024];
+		ResolveAudioPath(szAudioFile, fullPath, sizeof(fullPath));
+
+		ALLEGRO_AUDIO_STREAM *stream = al_load_audio_stream(fullPath, 4, 2048);
 		if (!stream)
 			return INVALID_HANDLE;
 
