@@ -28,8 +28,9 @@ private:
 	// RT_COMPOSITE: stitched multi-frame (owned bitmap, destroy on reset)
 	ALLEGRO_BITMAP *m_compositeBitmap;
 
-	// RT_ANIMATION: frame array (owned array, bitmaps are cached)
+	// RT_ANIMATION: frame array
 	ALLEGRO_BITMAP **m_animFrames;
+	bool m_animFramesOwned; // true = DCC-decoded (destroy on reset), false = PNG-cached (don't destroy)
 	int m_animFrameCount;
 	int m_animCurrentFrame;
 	double m_lastDrawTime;

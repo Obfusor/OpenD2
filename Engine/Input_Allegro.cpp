@@ -198,10 +198,11 @@ namespace IN
 			if (gdwNumProcessedCommands >= MAX_INPUT_COMMANDS)
 				break;
 
-			// F12 toggles ImGui overlay (engine-level, before game processing)
+			// F12 toggles ImGui overlay (engine-level, gated by editor config)
 			if (ev.type == ALLEGRO_EVENT_KEY_DOWN && ev.keyboard.keycode == ALLEGRO_KEY_F12)
 			{
-				g_showImGuiOverlay = !g_showImGuiOverlay;
+				if (pOpenConfig->bEditorEnabled)
+					g_showImGuiOverlay = !g_showImGuiOverlay;
 				continue;
 			}
 

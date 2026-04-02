@@ -8,9 +8,89 @@
 #include <cstring>
 #include <cstdio>
 #include <cmath>
+#include <vector>
 
 // From Input_Allegro.cpp
 extern bool g_showImGuiOverlay;
+
+///////////////////////////////////////////////////////
+//
+//	DCC Runtime Decode Helpers
+//
+
+// State for DCC decode callbacks (single-threaded, same pattern as GraphicsManager)
+static ALLEGRO_BITMAP *g_dccDecodeBitmap = nullptr;
+static D2Palette *g_dccDecodePalette = nullptr;
+static std::vector<ALLEGRO_BITMAP *> *g_dccFrameBitmaps = nullptr;
+
+static void *DCC_AllocCallback(unsigned int width, unsigned int height)
+{
+	g_dccDecodeBitmap = al_create_bitmap(width, height);
+	if (g_dccDecodeBitmap)
+	{
+		ALLEGRO_BITMAP *prev = al_get_target_bitmap();
+		al_set_target_bitmap(g_dccDecodeBitmap);
+		al_clear_to_color(al_map_rgba(0, 0, 0, 0));
+		al_set_target_bitmap(prev);
+	}
+	return (void *)g_dccDecodeBitmap;
+}
+
+static void DCC_DecodeCallback(void *pixels, void *extraData, int32_t frameNum,
+	int32_t frameX, int32_t frameY, int32_t frameW, int32_t frameH)
+{
+	if (!pixels || !g_dccDecodeBitmap || frameW <= 0 || frameH <= 0)
+		return;
+
+	BYTE *srcPixels = (BYTE *)pixels;
+	D2Palette *pal = g_dccDecodePalette;
+
+	// Create individual frame bitmap
+	ALLEGRO_BITMAP *frameBmp = al_create_bitmap(frameW, frameH);
+	if (!frameBmp)
+		return;
+
+	ALLEGRO_LOCKED_REGION *lr = al_lock_bitmap(frameBmp,
+		ALLEGRO_PIXEL_FORMAT_ABGR_8888, ALLEGRO_LOCK_WRITEONLY);
+	if (lr)
+	{
+		for (int32_t py = 0; py < frameH; py++)
+		{
+			uint32_t *dst = (uint32_t *)((char *)lr->data + py * lr->pitch);
+			for (int32_t px = 0; px < frameW; px++)
+			{
+				BYTE idx = srcPixels[py * frameW + px];
+				if (idx == 0)
+				{
+					dst[px] = 0x00000000; // transparent
+				}
+				else if (pal)
+				{
+					BYTE b = (*pal)[idx][0]; // pal.dat stores BGR
+					BYTE g = (*pal)[idx][1];
+					BYTE r = (*pal)[idx][2];
+					dst[px] = 0xFF000000 | (b << 16) | (g << 8) | r; // ABGR
+				}
+				else
+				{
+					dst[px] = 0xFF000000 | (idx << 16) | (idx << 8) | idx;
+				}
+			}
+		}
+		al_unlock_bitmap(frameBmp);
+	}
+
+	if (g_dccFrameBitmaps && frameNum >= 0)
+	{
+		if (frameNum >= (int32_t)g_dccFrameBitmaps->size())
+			g_dccFrameBitmaps->resize(frameNum + 1, nullptr);
+		(*g_dccFrameBitmaps)[frameNum] = frameBmp;
+	}
+	else
+	{
+		al_destroy_bitmap(frameBmp);
+	}
+}
 
 ///////////////////////////////////////////////////////
 //
@@ -85,7 +165,7 @@ AllegroRenderObject::AllegroRenderObject()
 	: m_x(0), m_y(0), m_w(0), m_h(0),
 	  m_type(RT_NONE), m_pRenderer(nullptr),
 	  m_texture(nullptr), m_compositeBitmap(nullptr),
-	  m_animFrames(nullptr), m_animFrameCount(0), m_animCurrentFrame(0),
+	  m_animFrames(nullptr), m_animFramesOwned(false), m_animFrameCount(0), m_animCurrentFrame(0),
 	  m_lastDrawTime(0), m_animFramerate(25.0f), m_animLoop(true),
 	  m_frameOffsetX(nullptr), m_frameOffsetY(nullptr),
 	  m_fontRef(nullptr), m_textColor(0),
@@ -107,9 +187,18 @@ void AllegroRenderObject::Reset()
 	}
 	if (m_animFrames)
 	{
+		if (m_animFramesOwned)
+		{
+			for (int i = 0; i < m_animFrameCount; i++)
+			{
+				if (m_animFrames[i])
+					al_destroy_bitmap(m_animFrames[i]);
+			}
+		}
 		free(m_animFrames);
 		m_animFrames = nullptr;
 	}
+	m_animFramesOwned = false;
 	if (m_frameOffsetX)
 	{
 		free(m_frameOffsetX);
@@ -258,35 +347,95 @@ void AllegroRenderObject::AttachAnimationResource(IGraphicsReference *ref, bool 
 	if (frameCount <= 0)
 		return;
 
-	m_animFrames = (ALLEGRO_BITMAP **)calloc(frameCount, sizeof(ALLEGRO_BITMAP *));
-	m_frameOffsetX = (int *)calloc(frameCount, sizeof(int));
-	m_frameOffsetY = (int *)calloc(frameCount, sizeof(int));
+	// Try PNG path first (pre-converted DC6 files)
+	char pngTest[1024];
+	Renderer_Allegro::ResolvePNGPath(m_pRenderer->GetBasePath(), srcPath,
+		0, 0, 1, pngTest, sizeof(pngTest));
 
-	if (!m_animFrames || !m_frameOffsetX || !m_frameOffsetY)
-		return;
+	ALLEGRO_BITMAP *testBmp = m_pRenderer->LoadOrGetBitmap(pngTest);
 
-	m_animFrameCount = frameCount;
-
-	for (int i = 0; i < frameCount; i++)
+	if (testBmp)
 	{
-		char pngPath[1024];
-		Renderer_Allegro::ResolvePNGPath(m_pRenderer->GetBasePath(), srcPath,
-			0, i, 1, pngPath, sizeof(pngPath));
+		// PNG path — load all frames from pre-converted PNGs
+		m_animFrames = (ALLEGRO_BITMAP **)calloc(frameCount, sizeof(ALLEGRO_BITMAP *));
+		m_frameOffsetX = (int *)calloc(frameCount, sizeof(int));
+		m_frameOffsetY = (int *)calloc(frameCount, sizeof(int));
 
-		m_animFrames[i] = m_pRenderer->LoadOrGetBitmap(pngPath);
+		if (!m_animFrames || !m_frameOffsetX || !m_frameOffsetY)
+			return;
 
-		// Get frame offsets
+		m_animFrameCount = frameCount;
+		m_animFrames[0] = testBmp;
+
 		uint32_t fw = 0, fh = 0;
 		int32_t offX = 0, offY = 0;
-		ref->GetGraphicsData(nullptr, i, &fw, &fh, &offX, &offY);
-		m_frameOffsetX[i] = offX;
-		m_frameOffsetY[i] = offY;
-
-		// Auto-size from first frame
-		if (i == 0 && m_w <= 0 && m_animFrames[i])
+		ref->GetGraphicsData(nullptr, 0, &fw, &fh, &offX, &offY);
+		m_frameOffsetX[0] = offX;
+		m_frameOffsetY[0] = offY;
+		if (m_w <= 0 && testBmp)
 		{
-			m_w = al_get_bitmap_width(m_animFrames[i]);
-			m_h = al_get_bitmap_height(m_animFrames[i]);
+			m_w = al_get_bitmap_width(testBmp);
+			m_h = al_get_bitmap_height(testBmp);
+		}
+
+		for (int i = 1; i < frameCount; i++)
+		{
+			char pngPath[1024];
+			Renderer_Allegro::ResolvePNGPath(m_pRenderer->GetBasePath(), srcPath,
+				0, i, 1, pngPath, sizeof(pngPath));
+			m_animFrames[i] = m_pRenderer->LoadOrGetBitmap(pngPath);
+
+			ref->GetGraphicsData(nullptr, i, &fw, &fh, &offX, &offY);
+			m_frameOffsetX[i] = offX;
+			m_frameOffsetY[i] = offY;
+		}
+	}
+	else
+	{
+		// No PNGs — try runtime DCC decode
+		std::vector<ALLEGRO_BITMAP *> decodedFrames;
+		g_dccFrameBitmaps = &decodedFrames;
+		g_dccDecodePalette = Pal::GetPalette(m_pRenderer->GetGlobalPalette());
+
+		ref->LoadSingleDirection(0, DCC_AllocCallback, DCC_DecodeCallback);
+
+		g_dccFrameBitmaps = nullptr;
+
+		// Clean up the strip bitmap (we have individual frames now)
+		if (g_dccDecodeBitmap)
+		{
+			al_destroy_bitmap(g_dccDecodeBitmap);
+			g_dccDecodeBitmap = nullptr;
+		}
+
+		int decoded = (int)decodedFrames.size();
+		if (decoded <= 0)
+			return;
+
+		m_animFrameCount = decoded;
+		m_animFramesOwned = true; // DCC-decoded frames are owned, must destroy on reset
+		m_animFrames = (ALLEGRO_BITMAP **)calloc(decoded, sizeof(ALLEGRO_BITMAP *));
+		m_frameOffsetX = (int *)calloc(decoded, sizeof(int));
+		m_frameOffsetY = (int *)calloc(decoded, sizeof(int));
+
+		if (!m_animFrames || !m_frameOffsetX || !m_frameOffsetY)
+			return;
+
+		for (int i = 0; i < decoded; i++)
+		{
+			m_animFrames[i] = decodedFrames[i];
+
+			uint32_t fw = 0, fh = 0;
+			int32_t offX = 0, offY = 0;
+			ref->GetGraphicsData(nullptr, i, &fw, &fh, &offX, &offY);
+			m_frameOffsetX[i] = offX;
+			m_frameOffsetY[i] = offY;
+
+			if (i == 0 && m_w <= 0 && m_animFrames[i])
+			{
+				m_w = al_get_bitmap_width(m_animFrames[i]);
+				m_h = al_get_bitmap_height(m_animFrames[i]);
+			}
 		}
 	}
 
@@ -747,20 +896,75 @@ void Renderer_Allegro::Present()
 
 	if (g_showImGuiOverlay)
 	{
-		ImGui::Begin("OpenD2 Debug", &g_showImGuiOverlay);
-		ImGui::Text("Render Objects: %d / %d", m_numAllocated, MAX_RENDER_OBJECTS);
-		ImGui::Text("Cached Bitmaps: %d", (int)m_bitmapCache.size());
-		ImGui::Text("Palette: %d", (int)m_currentPalette);
-		ImGui::Separator();
+		// Main editor panel
+		ImGui::Begin("OpenD2 Editor", &g_showImGuiOverlay, ImGuiWindowFlags_MenuBar);
+
+		if (ImGui::BeginMenuBar())
+		{
+			if (ImGui::BeginMenu("View"))
+			{
+				static bool showRenderer = true;
+				static bool showLayers = true;
+				static bool showDemo = false;
+				ImGui::MenuItem("Renderer Info", nullptr, &showRenderer);
+				ImGui::MenuItem("Layer Controls", nullptr, &showLayers);
+				ImGui::MenuItem("ImGui Demo", nullptr, &showDemo);
+				ImGui::EndMenu();
+			}
+			ImGui::EndMenuBar();
+		}
+
+		// Renderer info section
+		if (ImGui::CollapsingHeader("Renderer", ImGuiTreeNodeFlags_DefaultOpen))
+		{
+			ImGui::Text("Render Objects: %d / %d", m_numAllocated, MAX_RENDER_OBJECTS);
+			ImGui::Text("Cached Bitmaps: %d", (int)m_bitmapCache.size());
+			ImGui::Text("Palette: %d", (int)m_currentPalette);
+			ImGui::Text("FPS: %.1f", ImGui::GetIO().Framerate);
+		}
+
+		// Layer visibility controls (placeholder for Phase 8 editor integration)
+		if (ImGui::CollapsingHeader("Layer Controls"))
+		{
+			static bool showFloors = true, showWalls = true, showShadows = true;
+			static bool showObjects = true, showPaths = false;
+			ImGui::Checkbox("Floors (F1)", &showFloors);
+			ImGui::Checkbox("Walls (F2)", &showWalls);
+			ImGui::Checkbox("Shadows (F3)", &showShadows);
+			ImGui::Checkbox("Objects (F4)", &showObjects);
+			ImGui::Checkbox("Paths (F5)", &showPaths);
+			ImGui::Text("(Layer toggles not yet wired to renderer)");
+		}
+
+		// Tile info (placeholder)
+		if (ImGui::CollapsingHeader("Tile Info"))
+		{
+			ImGui::Text("Click a tile to inspect");
+			ImGui::Text("(Tile selection not yet implemented)");
+		}
+
+		// Bitmap cache browser
 		if (ImGui::CollapsingHeader("Bitmap Cache"))
 		{
+			ImGui::Text("Total: %d bitmaps", (int)m_bitmapCache.size());
+			static char filterBuf[128] = "";
+			ImGui::InputText("Filter", filterBuf, sizeof(filterBuf));
+
+			ImGui::BeginChild("CacheList", ImVec2(0, 200), true);
 			for (auto &pair : m_bitmapCache)
 			{
 				if (pair.second)
-					ImGui::Text("%s (%dx%d)", pair.first.c_str(),
-						al_get_bitmap_width(pair.second), al_get_bitmap_height(pair.second));
+				{
+					if (filterBuf[0] == '\0' || pair.first.find(filterBuf) != std::string::npos)
+					{
+						ImGui::Text("%s (%dx%d)", pair.first.c_str(),
+							al_get_bitmap_width(pair.second), al_get_bitmap_height(pair.second));
+					}
+				}
 			}
+			ImGui::EndChild();
 		}
+
 		ImGui::End();
 	}
 

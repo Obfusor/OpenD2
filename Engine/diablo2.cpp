@@ -94,6 +94,7 @@ D2CmdArgStrc OpenD2CommandArguments[] = {
 	{"AUDIO", "AUDIODEVICE", "audiodevice", CMD_DWORD, co(dwAudioDevice), 0},
 	{"AUDIO", "AUDIOCHANNELS", "audiochannels", CMD_DWORD, co(dwAudioChannels), 2},
 	{"DEBUG", "MAPVIEWER", "mapviewer", CMD_BOOLEAN, co(bMapViewer), 0x00},
+	{"DEBUG", "EDITOR", "editor", CMD_BOOLEAN, co(bEditorEnabled), 0x01},
 	{"", "", "", 0, 0x0000, 0x00},
 };
 #undef co

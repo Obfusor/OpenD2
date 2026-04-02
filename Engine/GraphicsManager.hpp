@@ -252,6 +252,7 @@ public:
 	virtual void* LoadSingleDirection(unsigned int direction,
 		AnimTextureAllocCallback allocCallback,
 		AnimTextureDecodeCallback decodeCallback) override;
+	virtual const char* GetSourcePath() override { return dccHandleName; }
 
 };
 

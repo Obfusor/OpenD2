@@ -661,6 +661,9 @@ struct OpenD2ConfigStrc
 
 	// Map viewer mode: launch directly into DS1 file browser
 	BYTE bMapViewer;
+
+	// Editor mode: enable F12 editor overlay (requires ENABLE_EDITOR at compile time)
+	BYTE bEditorEnabled;
 };
 
 /**
