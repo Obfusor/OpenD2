@@ -74,8 +74,8 @@ struct DS1File
 	};
 
 	DS1FileHeader fileHeader;
-	DS1Path optionalFileList[8];		// Vestigial. This is most likely used by an internal tool to "know" which tiles to load, because it isn't used in-game.
-									// It's pretty obvious that this is the case when everything up to Act4 tiles uses .tgl files, but Act5 uses .dt1 references.
+	DS1Path optionalFileList[33];	// DT1/TG1 file references embedded in the DS1 (up to 33 slots like the editor supports).
+									// Originally marked vestigial but used by map editor tools and our map viewer.
 	DS1LayerHeader layerHeader;
 	BYTE* pUnknownLayer;
 	DS1ObjectHeader objectHeader;

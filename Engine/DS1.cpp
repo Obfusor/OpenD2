@@ -133,7 +133,7 @@ namespace DS1
 		if (ds1 == INVALID_HANDLE)
 			return nullptr;
 		DS1File *ds1File = loadedDS1Files[ds1];
-		if (ds1File == nullptr || index < 0 || index >= 8)
+		if (ds1File == nullptr || index < 0 || index >= 33)
 			return nullptr;
 		if (ds1File->optionalFileList[index][0] == '\0')
 			return nullptr;
@@ -168,7 +168,7 @@ DS1File::DS1File(const char *path) : layerHeader({0}),
 	FS::Read(f, buffer, 1, fileSize);
 	FS::CloseFile(f);
 
-	memset(optionalFileList, 0, sizeof(DS1Path) * 8);
+	memset(optionalFileList, 0, sizeof(optionalFileList));
 	memset(objects, 0, sizeof(DS1Object) * MAX_DS1_OBJECTS);
 
 	// start reading stuff into the header
@@ -212,10 +212,13 @@ DS1File::DS1File(const char *path) : layerHeader({0}),
 		fileHeader.dwExtraFilesCount = *readHead;
 		readHead++;
 
-		for (int x = 0; x < fileHeader.dwExtraFilesCount; x++)
+		for (DWORD x = 0; x < fileHeader.dwExtraFilesCount; x++)
 		{
 			size_t n = strlen((char *)readHead) + 1;
-			D2Lib::strncpyz(optionalFileList[x], (const char *)readHead, MAX_D2PATH);
+			if (x < 33)
+			{
+				D2Lib::strncpyz(optionalFileList[x], (const char *)readHead, MAX_D2PATH);
+			}
 			readHead = (DWORD *)(((char *)readHead) + n);
 		}
 	}
