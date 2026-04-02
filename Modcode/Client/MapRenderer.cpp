@@ -207,14 +207,21 @@ ALLEGRO_BITMAP *MapRenderer::DecodeTileBitmap(handle dt1, int blockIndex, int ac
 		return nullptr;
 	}
 
+	// Sanity check dimensions (prevent absurd allocations)
+	if (w > 1024 || h > 1024)
+	{
+		m_tileCache[cacheKey] = nullptr;
+		return nullptr;
+	}
+
 	// Get the palette for this act
+	// Note: pixels points to DT1File's internal buffer — do NOT free it
 	D2Palette *pal = engine->PAL_GetPalette(act < 5 ? act : 0);
 
 	// Create an ALLEGRO_BITMAP and convert palette indices to RGBA
 	ALLEGRO_BITMAP *bmp = al_create_bitmap(w, h);
 	if (bmp == nullptr)
 	{
-		free(pixels);
 		m_tileCache[cacheKey] = nullptr;
 		return nullptr;
 	}
@@ -251,7 +258,7 @@ ALLEGRO_BITMAP *MapRenderer::DecodeTileBitmap(handle dt1, int blockIndex, int ac
 		al_unlock_bitmap(bmp);
 	}
 
-	free(pixels);
+	// Note: do NOT free(pixels) — it's DT1File's internal reusable buffer
 	m_tileCache[cacheKey] = bmp;
 	return bmp;
 }

@@ -215,26 +215,28 @@ void *DT1File::DecodeBlock(int32_t blockNum, uint32_t &width, uint32_t &height, 
 	}
 
 	DT1Block &block = blocks[blockNum];
+	int32_t blockSizeY = block.sizeY; // work on a copy to avoid mutating the block
+
 	width = block.sizeX;
-	height = -block.sizeY;
+	height = -blockSizeY;
 
 	// some orientations may modify the width and height. do that now.
 	int32_t yAdd = 96;
 	if (block.orientation == 0 || block.orientation == 15)
 	{ // floor or roof
-		if (block.sizeY)
+		if (blockSizeY)
 		{
-			block.sizeY = -80;
+			blockSizeY = -80;
 			height = 80;
 			yAdd = 0;
 		}
 	}
 	else if (block.orientation < 15)
 	{ // upper wall, shadow, special
-		if (block.sizeY)
+		if (blockSizeY)
 		{
-			block.sizeY += 32;
-			height -= 32;
+			blockSizeY += 32;
+			height = -blockSizeY;
 			yAdd = height;
 		}
 	}
@@ -288,14 +290,16 @@ void *DT1File::DecodeBlock(int32_t blockNum, uint32_t &width, uint32_t &height, 
 			int x, y = 0, n;
 			int xjump[] = {14, 12, 10, 8, 6, 4, 2, 0, 2, 4, 6, 8, 10, 12, 14};
 			int nbpx[] = {4, 8, 12, 16, 20, 24, 28, 32, 28, 24, 20, 16, 12, 8, 4};
-			while (length > 0)
+			while (length > 0 && y < 15)
 			{
 				x = xjump[y];
 				n = nbpx[y];
 				length -= n;
 				while (n)
 				{ // put *data at (x0+x,y0+y)
-					decodedBitmap[(width * (y0 + y)) + (x0 + x)] = *data;
+					size_t idx = (size_t)width * (size_t)(y0 + y) + (size_t)(x0 + x);
+					if (idx < decodedSize)
+						decodedBitmap[idx] = *data;
 					data++;
 					x++;
 					n--;
@@ -320,7 +324,9 @@ void *DT1File::DecodeBlock(int32_t blockNum, uint32_t &width, uint32_t &height, 
 					length -= b2;
 					while (b2)
 					{
-						decodedBitmap[(width * (y0 + y)) + (x0 + x)] = *data;
+						size_t idx = (size_t)width * (size_t)(y0 + y) + (size_t)(x0 + x);
+						if (idx < decodedSize)
+							decodedBitmap[idx] = *data;
 						data++;
 						x++;
 						b2--;
@@ -339,6 +345,10 @@ void *DT1File::DecodeBlock(int32_t blockNum, uint32_t &width, uint32_t &height, 
 	{
 		// special tiles... fixme?
 	}
+
+	x = 0;
+	y = 0;
+	return decodedBitmap;
 }
 
 DT1File::DT1Subtile *DT1File::GetSubtileAt(const DT1Block &block, int subtileNum)
