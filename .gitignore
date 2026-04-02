@@ -31,6 +31,7 @@
 
 # Projects
 build/*
+build_*/
 Build/*
 Win32/*
 game.dir/*
@@ -58,6 +59,7 @@ CTestTestfile.cmake
 # IDE / editor configs
 .vscode/
 .d2workshop/
+.claude/
 
 # Tools - extracted data and build artifacts
 Tools/D2SaveParser/extracted/

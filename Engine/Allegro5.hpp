@@ -1,0 +1,41 @@
+#pragma once
+
+//////////////////////////////////////////////////
+//
+// Allegro 5 Include Wrapper for OpenD2
+//
+// Central include point for Allegro 5 headers.
+// Platform-specific path resolution handled here.
+//
+//////////////////////////////////////////////////
+
+#ifdef USE_ALLEGRO5
+
+#ifdef _WIN32
+// Windows: use bundled headers from Libraries/allegro5/
+#include "../Libraries/allegro5/include/allegro5/allegro.h"
+#include "../Libraries/allegro5/include/allegro5/allegro_image.h"
+#include "../Libraries/allegro5/include/allegro5/allegro_font.h"
+#include "../Libraries/allegro5/include/allegro5/allegro_ttf.h"
+#include "../Libraries/allegro5/include/allegro5/allegro_primitives.h"
+#include "../Libraries/allegro5/include/allegro5/allegro_audio.h"
+#include "../Libraries/allegro5/include/allegro5/allegro_acodec.h"
+#else
+// Linux/macOS/ARM: use system-installed Allegro 5
+#include <allegro5/allegro.h>
+#include <allegro5/allegro_image.h>
+#include <allegro5/allegro_font.h>
+#include <allegro5/allegro_ttf.h>
+#include <allegro5/allegro_primitives.h>
+#include <allegro5/allegro_audio.h>
+#include <allegro5/allegro_acodec.h>
+#endif
+
+// Resolve Windows BITMAP conflict with Allegro
+#ifdef _WIN32
+#ifdef BITMAP
+#undef BITMAP
+#endif
+#endif
+
+#endif // USE_ALLEGRO5

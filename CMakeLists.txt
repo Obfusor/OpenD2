@@ -8,6 +8,8 @@ project(OpenD2)
 option(BUILD_GAME "Build Executable" ON)
 option(BUILD_D2CLIENT "Build D2Client" ON)
 option(BUILD_D2SERVER "Build D2Server" ON)
+option(USE_ALLEGRO5 "Use Allegro 5 instead of SDL2+OpenGL" OFF)
+option(ENABLE_EDITOR "Enable integrated map editor" ON)
 
 # Common options
 if(WIN32)
@@ -25,79 +27,204 @@ source_group("Shared" FILES ${SHARED_SRC})
 if(BUILD_GAME)
 	message(STATUS "Including game.exe files")
 
-	file(GLOB_RECURSE ENGINE_SRC Engine/*.h Engine/*.hpp Engine/*.c Engine/*.cpp)
+	# Collect engine sources, excluding EditorCompat (built separately)
+	file(GLOB ENGINE_SRC
+		Engine/*.h Engine/*.hpp Engine/*.c Engine/*.cpp
+	)
 
-	find_package(OpenGL REQUIRED)
+	if(USE_ALLEGRO5)
+		#############################################
+		# Allegro 5 build path
+		#############################################
+		message(STATUS "Building with Allegro 5")
 
-	# Use the included SDL on Windows, use find_package to find SDL on Linux
-	if(WIN32)
-		list(REMOVE_ITEM ENGINE_SRC ${CMAKE_CURRENT_SOURCE_DIR}/Engine/Platform_Linux.cpp)
-		file(GLOB_RECURSE SDL_SRC Libraries/sdl/*)
-		file(GLOB_RECURSE ADPCM_SRC Libraries/adpcm/*)
-		file(GLOB_RECURSE HUFFMAN_SRC Libraries/huffman/*)
-		file(GLOB_RECURSE PKWARE_SRC Libraries/pkware/*)
-		file(GLOB_RECURSE GLEW_SRC Libraries/glew/GL/*)
+		# Remove SDL/GL-specific engine files from ENGINE_SRC
+		list(REMOVE_ITEM ENGINE_SRC
+			${CMAKE_CURRENT_SOURCE_DIR}/Engine/Renderer_GL.cpp
+			${CMAKE_CURRENT_SOURCE_DIR}/Engine/Renderer_SDL.cpp
+		)
+
+		# Build EditorLib - the editor's C rendering code as a static library
+		file(GLOB EDITORCOMPAT_SRC
+			Engine/EditorCompat/*.c
+			Engine/EditorCompat/*.h
+		)
+		file(GLOB EDITORCOMPAT_MPQ_SRC
+			Engine/EditorCompat/mpq/*.c
+			Engine/EditorCompat/mpq/*.h
+		)
+
+		add_library(EditorLib STATIC ${EDITORCOMPAT_SRC} ${EDITORCOMPAT_MPQ_SRC})
+		set_target_properties(EditorLib PROPERTIES LINKER_LANGUAGE C)
+		target_compile_definitions(EditorLib PRIVATE
+			_CRT_SECURE_NO_WARNINGS
+			ALLEGRO_NO_MAGIC_MAIN
+		)
+
+		if(WIN32)
+			list(REMOVE_ITEM ENGINE_SRC ${CMAKE_CURRENT_SOURCE_DIR}/Engine/Platform_Linux.cpp)
+
+			set(ALLEGRO5_INCLUDE_DIR "${CMAKE_CURRENT_SOURCE_DIR}/Libraries/allegro5/include")
+			if("${CMAKE_SIZEOF_VOID_P}" STREQUAL "4")
+				set(ALLEGRO5_LIB_DIR "${CMAKE_CURRENT_SOURCE_DIR}/Libraries/allegro5/lib/win32")
+				set(ALLEGRO5_BIN_DIR "${CMAKE_CURRENT_SOURCE_DIR}/Libraries/allegro5/bin/win32")
+				set(ALLEGRO5_DEPS_LIB_DIR "${CMAKE_CURRENT_SOURCE_DIR}/Libraries/allegro5/deps/lib/win32")
+			else()
+				# For 64-bit, use same path for now (only 32-bit libs available)
+				set(ALLEGRO5_LIB_DIR "${CMAKE_CURRENT_SOURCE_DIR}/Libraries/allegro5/lib/win32")
+				set(ALLEGRO5_BIN_DIR "${CMAKE_CURRENT_SOURCE_DIR}/Libraries/allegro5/bin/win32")
+				set(ALLEGRO5_DEPS_LIB_DIR "${CMAKE_CURRENT_SOURCE_DIR}/Libraries/allegro5/deps/lib/win32")
+			endif()
+
+			set(ALLEGRO5_LIBRARIES
+				"${ALLEGRO5_LIB_DIR}/allegro.lib"
+				"${ALLEGRO5_LIB_DIR}/allegro_image.lib"
+				"${ALLEGRO5_LIB_DIR}/allegro_font.lib"
+				"${ALLEGRO5_LIB_DIR}/allegro_ttf.lib"
+				"${ALLEGRO5_LIB_DIR}/allegro_primitives.lib"
+				"${ALLEGRO5_LIB_DIR}/allegro_audio.lib"
+				"${ALLEGRO5_LIB_DIR}/allegro_acodec.lib"
+				"${ALLEGRO5_LIB_DIR}/allegro_main.lib"
+			)
+
+			# Compression libraries (already in engine)
+			file(GLOB_RECURSE ADPCM_SRC Libraries/adpcm/*)
+			file(GLOB_RECURSE HUFFMAN_SRC Libraries/huffman/*)
+			file(GLOB_RECURSE PKWARE_SRC Libraries/pkware/*)
+			set(LIBRARY_SRC ${ADPCM_SRC} ${HUFFMAN_SRC} ${PKWARE_SRC})
+		else()
+			list(REMOVE_ITEM ENGINE_SRC ${CMAKE_CURRENT_SOURCE_DIR}/Engine/Platform_Windows.cpp)
+
+			find_package(Allegro5 REQUIRED)
+			set(LIBRARY_SRC "")
+		endif()
+
+		# EditorLib include dirs
+		target_include_directories(EditorLib PRIVATE
+			${ALLEGRO5_INCLUDE_DIR}
+			${CMAKE_CURRENT_SOURCE_DIR}/Engine/EditorCompat
+		)
 
 		source_group("Engine" FILES ${ENGINE_SRC})
-		source_group("Libraries\\adpcm" FILES ${ADPCM_SRC})
-		source_group("Libraries\\huffman" FILES ${HUFFMAN_SRC})
-		source_group("Libraries\\pkware" FILES ${PKWARE_SRC})
-		source_group("Libraries\\SDL" FILES ${SDL_SRC})
-		source_group("Libraries\\glew\\include" FILES ${GLEW_SRC})
-		source_group("Libraries\\glm\\" FILES ${GLM_SRC})
+		source_group("EditorCompat" FILES ${EDITORCOMPAT_SRC})
+		source_group("EditorCompat\\mpq" FILES ${EDITORCOMPAT_MPQ_SRC})
 		source_group("Shared" FILES ${SHARED_SRC})
 
-		set(LIBRARY_SRC ${SDL_SRC} ${ADPCM_SRC} ${HUFFMAN_SRC} ${PKWARE_SRC} ${GLEW_SRC})
-
 		set(ENGINE_SRC ${ENGINE_SRC} ${SHARED_SRC} ${LIBRARY_SRC})
-		if("${CMAKE_SIZEOF_VOID_P}" STREQUAL "4")
-			set(SDL2_LIBRARY_DIR "${CMAKE_CURRENT_SOURCE_DIR}/Libraries/sdl/x86")
-		else()
-			set(SDL2_LIBRARY_DIR "${CMAKE_CURRENT_SOURCE_DIR}/Libraries/sdl/x64")
+
+		add_executable(game ${ENGINE_SRC})
+		set_target_properties(game PROPERTIES OUTPUT_NAME game)
+		set_target_properties(game PROPERTIES LINKER_LANGUAGE CXX)
+
+		target_compile_definitions(game PUBLIC D2EXE USE_ALLEGRO5)
+		if(ENABLE_EDITOR)
+			target_compile_definitions(game PUBLIC ENABLE_EDITOR)
+			target_compile_definitions(EditorLib PRIVATE ENABLE_EDITOR)
 		endif()
-		set(SDL2_LIBRARIES "${SDL2_LIBRARY_DIR}/SDL2.lib" "${SDL2_LIBRARY_DIR}/SDL2main.lib"
-			"${SDL2_LIBRARY_DIR}/SDL2main.lib" "${SDL2_LIBRARY_DIR}/SDL2test.lib"
-			"${SDL2_LIBRARY_DIR}/SDL2_net.lib" "${SDL2_LIBRARY_DIR}/SDL2_mixer.lib"
+
+		target_link_libraries(game PRIVATE EditorLib ${ALLEGRO5_LIBRARIES})
+		target_include_directories(game PRIVATE
+			${ALLEGRO5_INCLUDE_DIR}
+			${CMAKE_CURRENT_SOURCE_DIR}/Engine/EditorCompat
 		)
 
-		set(GLEW_INCLUDE_DIRS "${CMAKE_CURRENT_SOURCE_DIR}/Libraries/glew")
-		set(GLEW_LIBRARIES "${CMAKE_CURRENT_SOURCE_DIR}/Libraries/glew/glew32.lib")
-		set(GLM_INCLUDE_DIR "${CMAKE_CURRENT_SOURCE_DIR}/Libraries/glm")
+		if(WIN32)
+			set_target_properties(game PROPERTIES LINK_FLAGS /SUBSYSTEM:WINDOWS)
+
+			# System libs needed by Allegro 5
+			target_link_libraries(game PRIVATE
+				user32 gdi32 winmm ole32 kernel32 advapi32
+				shell32 comdlg32 uuid opengl32 Shlwapi psapi dsound
+			)
+
+			# Copy Allegro 5 DLLs to output directory
+			add_custom_command(TARGET game POST_BUILD
+				COMMAND ${CMAKE_COMMAND} -E copy_directory
+				"${ALLEGRO5_BIN_DIR}"
+				"$<TARGET_FILE_DIR:game>"
+			)
+		else()
+			target_link_libraries(game PRIVATE m dl pthread)
+		endif()
+
 	else()
-		list(REMOVE_ITEM ENGINE_SRC ${CMAKE_CURRENT_SOURCE_DIR}/Engine/Platform_Windows.cpp)
+		#############################################
+		# Original SDL2 + OpenGL build path
+		#############################################
+		message(STATUS "Building with SDL2 + OpenGL")
 
-		find_package(SDL2 REQUIRED)
-		find_package(GLEW REQUIRED)
-		find_package(GLM REQUIRED)
-	endif()
+		find_package(OpenGL REQUIRED)
 
-	add_executable(game ${ENGINE_SRC})
-	set_target_properties(game PROPERTIES OUTPUT_NAME game)
-	set_target_properties(game PROPERTIES LINKER_LANGUAGE CXX)
-	
-	target_link_libraries(game PRIVATE ${SDL2_LIBRARIES} ${GLEW_LIBRARIES} ${OPENGL_LIBRARIES})
-	target_include_directories(game PRIVATE ${SDL2_INCLUDE_DIRS} ${GLEW_INCLUDE_DIRS} ${GLM_INCLUDE_DIR})
+		# Use the included SDL on Windows, use find_package to find SDL on Linux
+		if(WIN32)
+			list(REMOVE_ITEM ENGINE_SRC ${CMAKE_CURRENT_SOURCE_DIR}/Engine/Platform_Linux.cpp)
+			file(GLOB_RECURSE SDL_SRC Libraries/sdl/*)
+			file(GLOB_RECURSE ADPCM_SRC Libraries/adpcm/*)
+			file(GLOB_RECURSE HUFFMAN_SRC Libraries/huffman/*)
+			file(GLOB_RECURSE PKWARE_SRC Libraries/pkware/*)
+			file(GLOB_RECURSE GLEW_SRC Libraries/glew/GL/*)
 
-	if(WIN32)
-		set_target_properties(game PROPERTIES LINK_FLAGS /SUBSYSTEM:WINDOWS)
-	else()
-		target_link_libraries(game PRIVATE m dl)
-	endif()
+			source_group("Engine" FILES ${ENGINE_SRC})
+			source_group("Libraries\\adpcm" FILES ${ADPCM_SRC})
+			source_group("Libraries\\huffman" FILES ${HUFFMAN_SRC})
+			source_group("Libraries\\pkware" FILES ${PKWARE_SRC})
+			source_group("Libraries\\SDL" FILES ${SDL_SRC})
+			source_group("Libraries\\glew\\include" FILES ${GLEW_SRC})
+			source_group("Libraries\\glm\\" FILES ${GLM_SRC})
+			source_group("Shared" FILES ${SHARED_SRC})
 
-	target_compile_definitions(game PUBLIC D2EXE)
+			set(LIBRARY_SRC ${SDL_SRC} ${ADPCM_SRC} ${HUFFMAN_SRC} ${PKWARE_SRC} ${GLEW_SRC})
 
-	# Copy required DLLs to output directory on Windows
-	if(WIN32)
-		add_custom_command(TARGET game POST_BUILD
-			COMMAND ${CMAKE_COMMAND} -E copy_directory
-			"${CMAKE_CURRENT_SOURCE_DIR}/Libraries/sdl/x86"
-			"$<TARGET_FILE_DIR:game>"
-		)
-		add_custom_command(TARGET game POST_BUILD
-			COMMAND ${CMAKE_COMMAND} -E copy_if_different
-			"${CMAKE_CURRENT_SOURCE_DIR}/Libraries/glew/glew32.dll"
-			"$<TARGET_FILE_DIR:game>"
-		)
+			set(ENGINE_SRC ${ENGINE_SRC} ${SHARED_SRC} ${LIBRARY_SRC})
+			if("${CMAKE_SIZEOF_VOID_P}" STREQUAL "4")
+				set(SDL2_LIBRARY_DIR "${CMAKE_CURRENT_SOURCE_DIR}/Libraries/sdl/x86")
+			else()
+				set(SDL2_LIBRARY_DIR "${CMAKE_CURRENT_SOURCE_DIR}/Libraries/sdl/x64")
+			endif()
+			set(SDL2_LIBRARIES "${SDL2_LIBRARY_DIR}/SDL2.lib" "${SDL2_LIBRARY_DIR}/SDL2main.lib"
+				"${SDL2_LIBRARY_DIR}/SDL2main.lib" "${SDL2_LIBRARY_DIR}/SDL2test.lib"
+				"${SDL2_LIBRARY_DIR}/SDL2_net.lib" "${SDL2_LIBRARY_DIR}/SDL2_mixer.lib"
+			)
+
+			set(GLEW_INCLUDE_DIRS "${CMAKE_CURRENT_SOURCE_DIR}/Libraries/glew")
+			set(GLEW_LIBRARIES "${CMAKE_CURRENT_SOURCE_DIR}/Libraries/glew/glew32.lib")
+			set(GLM_INCLUDE_DIR "${CMAKE_CURRENT_SOURCE_DIR}/Libraries/glm")
+		else()
+			list(REMOVE_ITEM ENGINE_SRC ${CMAKE_CURRENT_SOURCE_DIR}/Engine/Platform_Windows.cpp)
+
+			find_package(SDL2 REQUIRED)
+			find_package(GLEW REQUIRED)
+			find_package(GLM REQUIRED)
+		endif()
+
+		add_executable(game ${ENGINE_SRC})
+		set_target_properties(game PROPERTIES OUTPUT_NAME game)
+		set_target_properties(game PROPERTIES LINKER_LANGUAGE CXX)
+
+		target_link_libraries(game PRIVATE ${SDL2_LIBRARIES} ${GLEW_LIBRARIES} ${OPENGL_LIBRARIES})
+		target_include_directories(game PRIVATE ${SDL2_INCLUDE_DIRS} ${GLEW_INCLUDE_DIRS} ${GLM_INCLUDE_DIR})
+
+		if(WIN32)
+			set_target_properties(game PROPERTIES LINK_FLAGS /SUBSYSTEM:WINDOWS)
+		else()
+			target_link_libraries(game PRIVATE m dl)
+		endif()
+
+		target_compile_definitions(game PUBLIC D2EXE)
+
+		# Copy required DLLs to output directory on Windows
+		if(WIN32)
+			add_custom_command(TARGET game POST_BUILD
+				COMMAND ${CMAKE_COMMAND} -E copy_directory
+				"${CMAKE_CURRENT_SOURCE_DIR}/Libraries/sdl/x86"
+				"$<TARGET_FILE_DIR:game>"
+			)
+			add_custom_command(TARGET game POST_BUILD
+				COMMAND ${CMAKE_COMMAND} -E copy_if_different
+				"${CMAKE_CURRENT_SOURCE_DIR}/Libraries/glew/glew32.dll"
+				"$<TARGET_FILE_DIR:game>"
+			)
+		endif()
 	endif()
 endif()
 
