@@ -63,15 +63,17 @@ private:
 	int32_t m_previewHeight;
 	int m_lastPreviewIndex;
 
-	// Layout constants
+	// Layout constants (1280x720)
+	static const int SCREEN_W = 1280;
+	static const int SCREEN_H = 720;
 	static const int LIST_X = 10;
 	static const int LIST_Y = 50;
-	static const int LIST_W = 350;
+	static const int LIST_W = 480;
 	static const int ROW_H = 18;
-	static const int PREVIEW_X = 380;
+	static const int PREVIEW_X = 510;
 	static const int PREVIEW_Y = 50;
-	static const int PREVIEW_W = 400;
-	static const int PREVIEW_H = 500;
+	static const int PREVIEW_W = 750;
+	static const int PREVIEW_H = 620;
 };
 
 // Global accessor

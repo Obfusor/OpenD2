@@ -56,7 +56,7 @@ static void DrawAlTextF(float x, float y, float r, float g, float b, float a, co
 MapSelector *gpMapSelector = nullptr;
 
 MapSelector::MapSelector()
-	: m_selectedIndex(0), m_scrollOffset(0), m_visibleRows(28),
+	: m_selectedIndex(0), m_scrollOffset(0), m_visibleRows(35),
 	  m_bActive(true), m_bSelectionMade(false),
 	  m_previewDS1(INVALID_HANDLE), m_previewWidth(0), m_previewHeight(0),
 	  m_lastPreviewIndex(-1)
@@ -383,17 +383,17 @@ void MapSelector::DrawHeader()
 	// Draw title bar
 	float titleBg[] = {0.15f, 0.12f, 0.08f, 1.0f};
 	float titleBorder[] = {0.6f, 0.5f, 0.3f, 1.0f};
-	engine->renderer->DrawRectangle(0, 0, 800, 40, 0, nullptr, titleBg);
-	engine->renderer->DrawRectangle(0, 38, 800, 2, 0, nullptr, titleBorder);
+	engine->renderer->DrawRectangle(0, 0, (float)SCREEN_W, 40, 0, nullptr, titleBg);
+	engine->renderer->DrawRectangle(0, 38, (float)SCREEN_W, 2, 0, nullptr, titleBorder);
 
 	// Status bar at bottom
 	float countBg[] = {0.1f, 0.1f, 0.1f, 1.0f};
-	engine->renderer->DrawRectangle(0, 560, 800, 40, 0, nullptr, countBg);
+	engine->renderer->DrawRectangle(0, (float)(SCREEN_H - 40), (float)SCREEN_W, 40, 0, nullptr, countBg);
 
 #ifdef USE_ALLEGRO5
 
 	DrawAlText(10, 12, 0.9f, 0.8f, 0.5f, 1.0f, "OpenD2 Map Viewer - DS1 File Browser");
-	DrawAlTextF(10, 570, 0.6f, 0.6f, 0.6f, 1.0f,
+	DrawAlTextF(10, (float)(SCREEN_H - 30), 0.6f, 0.6f, 0.6f, 1.0f,
 		"%d files | Up/Down: Navigate | Enter: Load | Esc: Exit | PgUp/PgDn: Scroll",
 		(int)m_files.size());
 
@@ -624,7 +624,7 @@ void MapSelector::Draw()
 
 	// Draw background
 	float bg[] = {0.02f, 0.02f, 0.02f, 1.0f};
-	engine->renderer->DrawRectangle(0, 0, 800, 600, 0, nullptr, bg);
+	engine->renderer->DrawRectangle(0, 0, (float)SCREEN_W, (float)SCREEN_H, 0, nullptr, bg);
 
 	DrawHeader();
 	DrawFileList();

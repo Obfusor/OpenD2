@@ -58,8 +58,8 @@ namespace Window
 
 		al_set_new_display_flags(displayFlags);
 
-		// Create 800x600 display
-		gpDisplay = al_create_display(800, 600);
+		// Create 1280x720 display
+		gpDisplay = al_create_display(1280, 720);
 		if (!gpDisplay)
 		{
 			Log::Print(PRIORITY_MESSAGE, "Failed to create Allegro display");
