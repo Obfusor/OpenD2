@@ -213,7 +213,10 @@ if(BUILD_D2SERVER)
 	source_group("Server" FILES ${D2SERVER_SRC})
 	source_group("Shared" FILES ${SHARED_SRC})
 
-	set(D2SERVER_SRC ${D2SERVER_SRC} ${SHARED_SRC})
+	# D2Unit is shared code needed by both client and server
+	set(D2SERVER_SRC ${D2SERVER_SRC} ${SHARED_SRC}
+		Modcode/Client/Game/D2Unit.cpp
+		Modcode/Client/Game/D2Unit.hpp)
 
 	add_library(D2Server SHARED ${D2SERVER_SRC})
 	set_target_properties(D2Server PROPERTIES OUTPUT_NAME D2Server)

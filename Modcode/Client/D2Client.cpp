@@ -314,7 +314,24 @@ static void D2Client_HandleInput()
 		}
 	}
 
-	// handle worldspace clicking here
+	// Handle worldspace clicking (S02: click-to-move)
+	if (cl.gamestate == GS_INGAME && cl.bMouseClicked && gpWorld != nullptr && gpWorld->IsLoaded())
+	{
+		// Convert screen mouse position to tile coordinates
+		int tileX, tileY;
+		gpWorld->ScreenToTile((float)cl.dwMouseX, (float)cl.dwMouseY, tileX, tileY);
+
+		// Send walk command to the server
+		D2Packet packet;
+		memset(&packet, 0, sizeof(packet));
+		packet.nPacketType = D2CPACKET_WALKCOORD;
+
+		BYTE *data = (BYTE *)&packet;
+		*(WORD *)(data + 1) = (WORD)tileX;
+		*(WORD *)(data + 3) = (WORD)tileY;
+
+		engine->NET_SendClientPacket(&packet);
+	}
 }
 
 /*

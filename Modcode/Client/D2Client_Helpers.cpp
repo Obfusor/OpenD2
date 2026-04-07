@@ -24,25 +24,25 @@ bool Client_classMale(int nCharClass)
  *	Returns the localized name of a character class.
  *	@author	eezstreet
  */
-char16_t* Client_className(int nCharClass)
+char16_t *Client_className(int nCharClass)
 {
 	switch (nCharClass)
 	{
-		case D2CLASS_AMAZON:
-		default:
-			return engine->TBL_FindStringFromIndex(4011);
-		case D2CLASS_ASSASSIN:
-			return engine->TBL_FindStringFromIndex(4013);
-		case D2CLASS_BARBARIAN:
-			return engine->TBL_FindStringFromIndex(4007);
-		case D2CLASS_DRUID:
-			return engine->TBL_FindStringFromIndex(4012);
-		case D2CLASS_NECROMANCER:
-			return engine->TBL_FindStringFromIndex(4009);
-		case D2CLASS_PALADIN:
-			return engine->TBL_FindStringFromIndex(4008);
-		case D2CLASS_SORCERESS:
-			return engine->TBL_FindStringFromIndex(4010);
+	case D2CLASS_AMAZON:
+	default:
+		return engine->TBL_FindStringFromIndex(4011);
+	case D2CLASS_ASSASSIN:
+		return engine->TBL_FindStringFromIndex(4013);
+	case D2CLASS_BARBARIAN:
+		return engine->TBL_FindStringFromIndex(4007);
+	case D2CLASS_DRUID:
+		return engine->TBL_FindStringFromIndex(4012);
+	case D2CLASS_NECROMANCER:
+		return engine->TBL_FindStringFromIndex(4009);
+	case D2CLASS_PALADIN:
+		return engine->TBL_FindStringFromIndex(4008);
+	case D2CLASS_SORCERESS:
+		return engine->TBL_FindStringFromIndex(4010);
 	}
 }
 
@@ -50,12 +50,12 @@ char16_t* Client_className(int nCharClass)
  *	Searches the item tables (weapons, armor, misc) for a matching 4-char code.
  *	Returns the TBL string for the item's base name, or nullptr if not found.
  */
-char16_t* Client_getItemName(const char* szCode)
+char16_t *Client_getItemName(const char *szCode)
 {
 	if (sgptDataTables == nullptr || szCode == nullptr)
 		return nullptr;
 
-	DWORD code = *(DWORD*)szCode;
+	DWORD code = *(DWORD *)szCode;
 
 	// Search weapons
 	if (sgptDataTables->pWeapons)
@@ -94,7 +94,7 @@ char16_t* Client_getItemName(const char* szCode)
  *	Returns the localized name of a skill based on class and skill index (0-29).
  *	Uses the SkillDesc table's wStrName field for TBL lookup.
  */
-char16_t* Client_getSkillName(int nCharClass, int nSkillIndex)
+char16_t *Client_getSkillName(int nCharClass, int nSkillIndex)
 {
 	if (sgptDataTables == nullptr || sgptDataTables->pSkillsTxt == nullptr ||
 		sgptDataTables->pSkillDescTxt == nullptr)
@@ -106,7 +106,7 @@ char16_t* Client_getSkillName(int nCharClass, int nSkillIndex)
 	int classSkillFound = 0;
 	for (int i = 0; i < sgptDataTables->nSkillsTxtRecordCount; i++)
 	{
-		D2SkillsTxt* pSkill = &sgptDataTables->pSkillsTxt[i];
+		D2SkillsTxt *pSkill = &sgptDataTables->pSkillsTxt[i];
 		if (pSkill->nCharClass == (BYTE)nCharClass)
 		{
 			if (classSkillFound == nSkillIndex)
@@ -132,22 +132,22 @@ char16_t* Client_getSkillName(int nCharClass, int nSkillIndex)
  *	For unique/set quality items, returns the specific unique or set item name.
  *	Falls back to the base item name if no unique/set match is found.
  */
-char16_t* Client_getUniqueItemName(const char* szCode, BYTE nQuality)
+char16_t *Client_getUniqueItemName(const char *szCode, BYTE nQuality)
 {
 	if (sgptDataTables == nullptr || szCode == nullptr)
 		return Client_getItemName(szCode);
 
-	DWORD code = *(DWORD*)szCode;
+	DWORD code = *(DWORD *)szCode;
 
 	// For unique items (quality 7), search uniqueitems.bin
 	if (nQuality == 7 && sgptDataTables->pUniqueItemsTxt)
 	{
 		for (int i = 0; i < sgptDataTables->nUniqueItemsTxtRecordCount; i++)
 		{
-			D2UniqueItemsTxt* pUniq = &sgptDataTables->pUniqueItemsTxt[i];
+			D2UniqueItemsTxt *pUniq = &sgptDataTables->pUniqueItemsTxt[i];
 			if (pUniq->dwBaseItemCode == code)
 			{
-				char16_t* name = engine->TBL_FindStringFromIndex(pUniq->wTblIndex);
+				char16_t *name = engine->TBL_FindStringFromIndex(pUniq->wTblIndex);
 				if (name)
 					return name;
 			}
@@ -159,10 +159,10 @@ char16_t* Client_getUniqueItemName(const char* szCode, BYTE nQuality)
 	{
 		for (int i = 0; i < sgptDataTables->nSetItemsTxtRecordCount; i++)
 		{
-			D2SetItemsTxt* pSet = &sgptDataTables->pSetItemsTxt[i];
+			D2SetItemsTxt *pSet = &sgptDataTables->pSetItemsTxt[i];
 			if (pSet->szItemCode == code)
 			{
-				char16_t* name = engine->TBL_FindStringFromIndex(pSet->wStringId);
+				char16_t *name = engine->TBL_FindStringFromIndex(pSet->wStringId);
 				if (name)
 					return name;
 			}
@@ -178,13 +178,13 @@ char16_t* Client_getUniqueItemName(const char* szCode, BYTE nQuality)
  *	For unique (7) and set (5) items, returns the unique/set invfile if available.
  *	Falls back to the normal szInvFile from the base item entry.
  */
-const char* Client_getItemInvFile(const char* szCode, BYTE nQuality)
+const char *Client_getItemInvFile(const char *szCode, BYTE nQuality)
 {
 	if (sgptDataTables == nullptr || szCode == nullptr)
 		return nullptr;
 
-	DWORD code = *(DWORD*)szCode;
-	D2ItemsTxt* pBaseItem = nullptr;
+	DWORD code = *(DWORD *)szCode;
+	D2ItemsTxt *pBaseItem = nullptr;
 
 	// Find the base item record
 	if (sgptDataTables->pWeapons)
@@ -192,7 +192,10 @@ const char* Client_getItemInvFile(const char* szCode, BYTE nQuality)
 		for (int i = 0; i < sgptDataTables->nWeaponsTxtRecordCount; i++)
 		{
 			if (sgptDataTables->pWeapons[i].dwCode == code)
-			{ pBaseItem = &sgptDataTables->pWeapons[i]; break; }
+			{
+				pBaseItem = &sgptDataTables->pWeapons[i];
+				break;
+			}
 		}
 	}
 	if (!pBaseItem && sgptDataTables->pArmor)
@@ -200,7 +203,10 @@ const char* Client_getItemInvFile(const char* szCode, BYTE nQuality)
 		for (int i = 0; i < sgptDataTables->nArmorTxtRecordCount; i++)
 		{
 			if (sgptDataTables->pArmor[i].dwCode == code)
-			{ pBaseItem = &sgptDataTables->pArmor[i]; break; }
+			{
+				pBaseItem = &sgptDataTables->pArmor[i];
+				break;
+			}
 		}
 	}
 	if (!pBaseItem && sgptDataTables->pMisc)
@@ -208,7 +214,10 @@ const char* Client_getItemInvFile(const char* szCode, BYTE nQuality)
 		for (int i = 0; i < sgptDataTables->nMiscTxtRecordCount; i++)
 		{
 			if (sgptDataTables->pMisc[i].dwCode == code)
-			{ pBaseItem = &sgptDataTables->pMisc[i]; break; }
+			{
+				pBaseItem = &sgptDataTables->pMisc[i];
+				break;
+			}
 		}
 	}
 

@@ -1,4 +1,5 @@
 #include "D2Server.hpp"
+#include "D2ServerGame.hpp"
 
 D2ModuleImportStrc *engine = nullptr;
 D2GameConfigStrc *config = nullptr;
@@ -8,14 +9,53 @@ OpenD2ConfigStrc *openConfig = nullptr;
 static struct
 {
 	bool bKillServer;
+	DWORD dwLastTick;
+	bool bGameStarted;
 } sv;
+
+// Server tick rate: 25 FPS = 40ms per frame
+static const DWORD SERVER_TICK_MS = 40;
 
 /*
  *	Called every frame on the server.
+ *	Gates execution to 25 FPS and drives the game tick.
  *	@author	eezstreet
  */
 static void D2Server_RunFrame()
 {
+	if (gpServerGame == nullptr || !gpServerGame->IsInitialized())
+	{
+		return;
+	}
+
+	DWORD dwNow = engine->Milliseconds();
+	if (dwNow - sv.dwLastTick < SERVER_TICK_MS)
+	{
+		return;
+	}
+	sv.dwLastTick = dwNow;
+
+	gpServerGame->Tick();
+}
+
+/*
+ *	Start the game. Called once when the client signals readiness.
+ */
+static void D2Server_StartGame()
+{
+	if (sv.bGameStarted)
+	{
+		return;
+	}
+
+	if (gpServerGame == nullptr)
+	{
+		gpServerGame = new D2ServerGame();
+	}
+
+	gpServerGame->InitFromSave(config, openConfig);
+	sv.bGameStarted = true;
+	sv.dwLastTick = engine->Milliseconds();
 }
 
 /*
@@ -27,6 +67,8 @@ static void D2Server_InitializeServer(D2GameConfigStrc *pConfig, OpenD2ConfigStr
 	config = pConfig;
 	openConfig = pOpenConfig;
 	sv.bKillServer = false;
+	sv.dwLastTick = 0;
+	sv.bGameStarted = false;
 
 	D2Common_Init(engine, pConfig, pOpenConfig);
 }
@@ -36,6 +78,32 @@ static void D2Server_InitializeServer(D2GameConfigStrc *pConfig, OpenD2ConfigStr
  */
 static void D2Server_Shutdown()
 {
+	if (gpServerGame != nullptr)
+	{
+		delete gpServerGame;
+		gpServerGame = nullptr;
+	}
+	sv.bGameStarted = false;
+}
+
+/*
+ *	Handle a packet received from the client.
+ */
+static bool D2Server_HandlePacket(D2Packet *pPacket)
+{
+	if (pPacket == nullptr)
+	{
+		return false;
+	}
+
+	// If the game hasn't started yet, check for join/save packets
+	// that the engine handles. Once in-game, dispatch to the game.
+	if (gpServerGame != nullptr && gpServerGame->IsInitialized())
+	{
+		gpServerGame->HandleClientPacket(pPacket);
+	}
+
+	return true;
 }
 
 /*
@@ -47,6 +115,12 @@ static OpenD2Modules D2Server_RunModuleFrame(D2GameConfigStrc *pConfig, OpenD2Co
 	{
 		// now is our chance! initialize!
 		D2Server_InitializeServer(pConfig, pOpenConfig);
+	}
+
+	// Start the game when client is ready (for local server)
+	if (!sv.bGameStarted && config != nullptr)
+	{
+		D2Server_StartGame();
 	}
 
 	D2Server_RunFrame();
@@ -83,6 +157,7 @@ extern "C"
 		gExports.nApiVersion = D2SERVERAPI_VERSION;
 		gExports.RunModuleFrame = D2Server_RunModuleFrame;
 		gExports.CleanupModule = D2Server_Shutdown;
+		gExports.HandlePacket = D2Server_HandlePacket;
 
 		return &gExports;
 	}

@@ -64,6 +64,15 @@ CTestTestfile.cmake
 # Game data (extracted assets, converted PNGs)
 data/
 
+reference/
+
+# Save files (user-specific game data)
+Save/
+
+# Runtime files
+imgui.ini
+coverage.yaml
+
 # Tools - extracted data and build artifacts
 Tools/D2SaveParser/extracted/
 Tools/D2SaveParser/extracted_*.txt

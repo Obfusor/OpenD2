@@ -4,8 +4,7 @@
 
 // Class token names for player character rendering
 static const char *g_szClassTokens[D2CLASS_MAX] = {
-    "AM", "SO", "NE", "PA", "BA", "DZ", "AI"
-};
+    "AM", "SO", "NE", "PA", "BA", "DZ", "AI"};
 
 // D2 stat IDs
 enum

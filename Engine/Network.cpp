@@ -185,21 +185,39 @@ namespace Network
 		if (!bInitialized || !pPacket)
 			return;
 
+		// Check if any network clients are connected
+		bool bSentOverNetwork = false;
 		for (int i = 0; i < MAX_CLIENTS; i++)
 		{
 			if ((nClientMask & (1 << i)) && gClientConnections[i] != NET_INVALID)
 			{
 				send(gClientConnections[i], (const char *)pPacket, sizeof(D2Packet), 0);
+				bSentOverNetwork = true;
 			}
+		}
+
+		// Local server fallback: if no network clients connected,
+		// deliver the packet directly to the client module in-process.
+		if (!bSentOverNetwork && gnConnectedClients == 0)
+		{
+			ClientProcessPacket(pPacket);
 		}
 	}
 
 	void SendClientPacket(D2Packet *pPacket)
 	{
-		if (!bInitialized || !pPacket || gClientSocket == NET_INVALID)
+		if (!bInitialized || !pPacket)
 			return;
 
-		send(gClientSocket, (const char *)pPacket, sizeof(D2Packet), 0);
+		if (gClientSocket != NET_INVALID)
+		{
+			send(gClientSocket, (const char *)pPacket, sizeof(D2Packet), 0);
+		}
+		else
+		{
+			// Local server fallback: deliver directly to the server module
+			ServerProcessPacket(pPacket);
+		}
 	}
 
 	DWORD ReadServerPackets(DWORD dwTimeout)

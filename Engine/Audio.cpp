@@ -61,9 +61,6 @@ namespace Audio
 			return;
 		}
 
-		// Reserve sample instances for sound effects
-		al_reserve_samples(16);
-
 		gpVoice = al_create_voice(44100, ALLEGRO_AUDIO_DEPTH_INT16, ALLEGRO_CHANNEL_CONF_2);
 		if (!gpVoice)
 		{
@@ -82,6 +79,9 @@ namespace Audio
 
 		al_attach_mixer_to_voice(gpMixer, gpVoice);
 		al_set_default_mixer(gpMixer);
+
+		// Reserve sample instances (must be after default mixer is set)
+		al_reserve_samples(16);
 
 		bInitialized = true;
 		Log::Print(PRIORITY_MESSAGE, "Audio: Initialized (Allegro audio)");

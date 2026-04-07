@@ -1,68 +1,13 @@
 #include "MapRenderer.hpp"
 #include "D2Client.hpp"
+#include "EditorBridge.hpp"
 #include <cstring>
 #include <cstdio>
 
-#include <allegro5/allegro.h>
 #include <allegro5/allegro_font.h>
 #include <allegro5/allegro_primitives.h>
 
-// Editor bridge functions (C linkage)
-extern "C" {
-	void editor_bridge_init(const char *basePath);
-	void editor_bridge_shutdown(void);
-	int editor_bridge_load_ds1(const char *ds1RelativePath);
-
-	// Editor types we need to read
-	typedef struct {
-		ALLEGRO_BITMAP *al_bmp;
-		int w, h;
-		unsigned char **line;
-		int clip_x1, clip_y1;
-		int clip_x2, clip_y2;
-		void *vtable;
-		unsigned char *data;
-	} BITMAP_A4;
-
-	typedef struct {
-		int ds1_usage;
-		char name[80];
-		void *buffer;
-		long buff_len;
-		long x1, x2;
-		long block_num;
-		long bh_start;
-		void *bh_buffer;
-		int bh_buff_len;
-		BITMAP_A4 **block_zoom[5]; // ZM_MAX = 5
-		int bz_size[5];
-	} DT1_S_EXT;
-
-	typedef struct {
-		long direction;
-		long roof_y;
-		short sound;
-		char animated;
-		long size_y;
-		long size_x;
-		long zeros1;
-		long orientation;
-		long main_index;
-		long sub_index;
-		long rarity;
-		// ... rest of BLOCK_S
-	} BLOCK_S_EXT;
-
-	// Globals from editor
-	extern DT1_S_EXT *glb_dt1;
-
-	// DS1 globals
-	typedef struct DS1_S_EXT DS1_S_EXT;
-	extern DS1_S_EXT *glb_ds1;
-}
-
 static ALLEGRO_FONT *s_pFont = nullptr;
-static bool s_editorInited = false;
 
 static void EnsureFont()
 {
@@ -105,11 +50,7 @@ bool MapRenderer::LoadMap(const char *relativePath)
 	UnloadMap();
 
 	// Initialize editor bridge if not done yet
-	if (!s_editorInited)
-	{
-		editor_bridge_init(openConfig->szBasePath);
-		s_editorInited = true;
-	}
+	EnsureEditorBridgeInit();
 
 	// Load DS1 using the engine (for cell access via module API)
 	char ds1Path[MAX_D2PATH];
