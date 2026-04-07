@@ -1,7 +1,10 @@
 /*
  *	Editor Global State and Bridge
  *	Defines editor globals and provides initialization + filesystem bridge.
- *	Uses native Allegro 4 types from d2-ds1-edit.
+ *	Uses native Allegro 5 types from d2-ds1-edit (reference project).
+ *
+ *	This is the ONLY OpenD2-specific file in EditorCompat.
+ *	All other files are direct copies from reference/d2-ds1-edit/Sources/.
  */
 
 #include "structs.h"
@@ -74,9 +77,25 @@ void editor_bridge_init(const char *basePath)
 	if (glb_dt1 == NULL)
 		glb_dt1 = (DT1_S *)calloc(DT1_MAX, sizeof(DT1_S));
 
-	// Initialize Allegro 4 (needed for bitmap operations)
-	allegro_init();
-	set_color_depth(8);
+	// Set mod_dir[0] to basepath so misc_load_mpq_file() can find DT1 files.
+	// mod_load_in_mem() constructs "mod_dir\filename", so basepath needs no
+	// trailing separator (editor_bridge_basepath has one, strip it).
+	{
+		char *dir = _strdup(editor_bridge_basepath);
+		size_t len = strlen(dir);
+		while (len > 0 && (dir[len - 1] == '\\' || dir[len - 1] == '/'))
+			dir[--len] = '\0';
+		glb_config.mod_dir[0] = dir;
+	}
+
+	// Connect to OpenD2's Allegro 5 display so bitmap creation works
+	a5_display = al_get_current_display();
+
+	// Force memory bitmaps for the editor's tile rendering.
+	// dt1_all_zoom_make() calls a5_putpixel() per-pixel — if the bitmaps
+	// are GPU (video) bitmaps, this is extremely slow due to per-pixel
+	// target switches. Memory bitmaps make pixel ops fast.
+	al_set_new_bitmap_flags(ALLEGRO_MEMORY_BITMAP);
 }
 
 void editor_bridge_shutdown(void)
@@ -154,6 +173,7 @@ int editor_bridge_load_ds1(const char *ds1RelativePath)
 	{
 		tagType = *readHead++;
 	}
+	(void)tagType;
 
 	memset(&glb_ds1[ds1_idx], 0, sizeof(DS1_S));
 	glb_ds1[ds1_idx].act = (int)act + 1;

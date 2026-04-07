@@ -3,7 +3,21 @@
 #define _WINDS1EDIT_TYPES_H_
 
 typedef unsigned char      UBYTE;
-typedef short int          WORD;
+
+/*
+ * WORD: d2-ds1-edit defines as signed short, D2Shared.hpp as unsigned short.
+ * In C builds (EditorLib), use the original signed definition.
+ * In C++ builds (D2Client), use unsigned short to match D2Shared.hpp.
+ */
+#ifdef __cplusplus
+  #ifndef _D2SHARED_WORD_DEFINED
+  #define _D2SHARED_WORD_DEFINED
+  typedef unsigned short int WORD;
+  #endif
+#else
+  typedef short int          WORD;
+#endif
+
 typedef unsigned short int UWORD;
 typedef unsigned long      UDWORD;
 

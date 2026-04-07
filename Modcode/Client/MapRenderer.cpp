@@ -16,7 +16,6 @@ static void EnsureFont()
 }
 
 MapRenderer *gpMapRenderer = nullptr;
-char s_tileDebug[256] = "";
 
 MapRenderer::MapRenderer()
 	: m_ds1Handle(INVALID_HANDLE), m_mapWidth(0), m_mapHeight(0), m_act(1),
@@ -71,9 +70,17 @@ bool MapRenderer::LoadMap(const char *relativePath)
 	if (m_act >= 1 && m_act <= 5)
 		engine->renderer->SetGlobalPalette((D2Palettes)(m_act - 1));
 
+	// Set the editor's palette from OpenD2's engine palette
+	int actIdx = (int)m_act - 1;
+	if (actIdx < 0) actIdx = 0;
+	if (actIdx > 4) actIdx = 4;
+	EditorBridge_SetPalette(actIdx);
+
 	// Load DT1s using the EDITOR's pipeline (dt1_add -> dt1_all_zoom_make)
-	// This pre-renders all tile blocks into BITMAP_A4s with 8-bit palette data
 	int editorDs1 = editor_bridge_load_ds1(relativePath);
+
+	// Restore default bitmap flags after editor loading
+	al_set_new_bitmap_flags(ALLEGRO_VIDEO_BITMAP);
 
 	// Build tile lookup from the editor's loaded DT1s
 	BuildTileLookupFromEditor();
@@ -99,28 +106,19 @@ void MapRenderer::BuildTileLookupFromEditor()
 {
 	m_tileLookup.clear();
 
-	// Scan all loaded DT1s in the editor's global array
-	for (int d = 0; d < 300; d++) // DT1_MAX = 300
+	for (int d = 0; d < DT1_MAX; d++)
 	{
-		DT1_S_EXT *dt1 = &glb_dt1[d];
+		DT1_S *dt1 = &glb_dt1[d];
 		if (dt1->ds1_usage <= 0 || dt1->bh_buffer == NULL || dt1->block_num <= 0)
 			continue;
 
-		BLOCK_S_EXT *blocks = (BLOCK_S_EXT *)dt1->bh_buffer;
-		// Block headers are 96 bytes each
-		unsigned char *blockBase = (unsigned char *)dt1->bh_buffer;
+		BLOCK_S *blocks = (BLOCK_S *)dt1->bh_buffer;
 
 		for (long b = 0; b < dt1->block_num; b++)
 		{
-			// Read block header fields at correct offsets (96 bytes per block)
-			unsigned char *bh = blockBase + (b * 96);
-			long orientation = *(long *)(bh + 20);
-			long main_index = *(long *)(bh + 24);
-			long sub_index = *(long *)(bh + 28);
-
-			TileKey key = {orientation, main_index, sub_index};
+			TileKey key = {blocks[b].orientation, blocks[b].main_index, blocks[b].sub_index};
 			TileEntry entry;
-			entry.dt1Handle = (handle)d; // Store DT1 index
+			entry.dt1Handle = (handle)d;
 			entry.blockIndex = (int)b;
 			m_tileLookup[key].push_back(entry);
 		}
@@ -136,85 +134,21 @@ ALLEGRO_BITMAP *MapRenderer::DecodeTileBitmap(handle dt1Handle, int blockIndex, 
 	if (it != m_tileCache.end())
 		return it->second;
 
-	// Get the pre-rendered bitmap from the editor's DT1 data
-	DT1_S_EXT *dt1 = &glb_dt1[dt1Idx];
-	if (dt1->block_zoom[0] == NULL || blockIndex >= dt1->block_num)
+	DT1_S *dt1 = &glb_dt1[dt1Idx];
+	if (dt1->block_cache[0] == NULL || blockIndex >= dt1->block_num)
 	{
 		m_tileCache[cacheKey] = nullptr;
 		return nullptr;
 	}
 
-	BITMAP_A4 *srcBmp = dt1->block_zoom[0][blockIndex]; // zoom 0 = 1:1
-	if (srcBmp == NULL || srcBmp->line == NULL || srcBmp->w == 0 || srcBmp->h == 0)
+	CACHED_TILE *cached = dt1->block_cache[0][blockIndex];
+	if (cached == NULL)
 	{
 		m_tileCache[cacheKey] = nullptr;
 		return nullptr;
 	}
 
-	if (srcBmp->w > 1024 || srcBmp->h > 1024)
-	{
-		m_tileCache[cacheKey] = nullptr;
-		return nullptr;
-	}
-
-	// Count non-zero pixels for the first few tiles (debug HUD)
-	static int dbgChecked = 0;
-	if (dbgChecked < 5)
-	{
-		int nonZero = 0;
-		for (int y = 0; y < srcBmp->h; y++)
-			for (int x = 0; x < srcBmp->w; x++)
-				if (srcBmp->line[y][x] != 0) nonZero++;
-		if (nonZero > 0)
-		{
-			snprintf(s_tileDebug, sizeof(s_tileDebug),
-				"TileOK: dt1=%d blk=%d %dx%d nz=%d/%d",
-				dt1Idx, blockIndex, srcBmp->w, srcBmp->h, nonZero, srcBmp->w * srcBmp->h);
-			dbgChecked = 5; // stop checking
-		}
-		dbgChecked++;
-	}
-
-	// Convert the 8-bit palette-indexed BITMAP_A4 to an ALLEGRO_BITMAP
-	D2Palette *pal = engine->PAL_GetPalette(act < 5 ? act : 0);
-
-	ALLEGRO_BITMAP *bmp = al_create_bitmap(srcBmp->w, srcBmp->h);
-	if (bmp == nullptr)
-	{
-		m_tileCache[cacheKey] = nullptr;
-		return nullptr;
-	}
-
-	ALLEGRO_LOCKED_REGION *lr = al_lock_bitmap(bmp, ALLEGRO_PIXEL_FORMAT_ABGR_8888, ALLEGRO_LOCK_WRITEONLY);
-	if (lr)
-	{
-		for (int y = 0; y < srcBmp->h; y++)
-		{
-			uint32_t *dst = (uint32_t *)((char *)lr->data + y * lr->pitch);
-			unsigned char *src = srcBmp->line[y];
-			for (int x = 0; x < srcBmp->w; x++)
-			{
-				unsigned char idx = src[x];
-				if (idx == 0)
-				{
-					dst[x] = 0x00000000; // transparent
-				}
-				else if (pal)
-				{
-					BYTE b = (*pal)[idx][0]; // pal.dat stores BGR
-					BYTE g = (*pal)[idx][1];
-					BYTE r = (*pal)[idx][2];
-					dst[x] = 0xFF000000 | (b << 16) | (g << 8) | r; // ABGR
-				}
-				else
-				{
-					dst[x] = 0xFF000000 | (idx << 16) | (idx << 8) | idx;
-				}
-			}
-		}
-		al_unlock_bitmap(bmp);
-	}
-
+	ALLEGRO_BITMAP *bmp = cache_tile_to_a5_bitmap(cached, a5_current_palette);
 	m_tileCache[cacheKey] = bmp;
 	return bmp;
 }
@@ -383,10 +317,6 @@ void MapRenderer::Draw()
 			(int)m_tileLookup.size(), dbgDrawn, dbgEmpty, dbgNoEntry,
 			m_cameraX, m_cameraY);
 		al_draw_text(s_pFont, al_map_rgb(200, 180, 120), 10, 8, ALLEGRO_ALIGN_LEFT, info);
-
-		// Show tile pixel debug info
-		if (s_tileDebug[0])
-			al_draw_text(s_pFont, al_map_rgb(255, 100, 100), 10, 20, ALLEGRO_ALIGN_LEFT, s_tileDebug);
 	}
 
 	engine->renderer->Present();

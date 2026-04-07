@@ -52,8 +52,8 @@ private:
     static const int TILE_HEIGHT = 80;
     static const int HALF_W = TILE_WIDTH / 2;  // 80
     static const int HALF_H = TILE_HEIGHT / 2; // 40
-    static const int SCREEN_W = 800;
-    static const int SCREEN_H = 600;
+    static const int SCREEN_W = 1280;
+    static const int SCREEN_H = 720;
 
     // Tile lookup types
     struct TileKey

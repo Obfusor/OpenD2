@@ -1,10 +1,12 @@
 #include <string.h>
+#include <stdlib.h>
 #include "structs.h"
 #include "error.h"
 #include "dt1_draw.h"
 #include "misc.h"
 #include "mpq/MpqView.h"
 #include "dt1misc.h"
+#include "rgba_cache.h"
 
 
 // ==========================================================================
@@ -30,7 +32,7 @@ int dt1_already_loaded(char * dt1name, int * idx)
 // memory free of a dt1
 int dt1_free(int i)
 {
-   BITMAP  * bmp_ptr;
+   ALLEGRO_BITMAP  * bmp_ptr;
    int     size = glb_dt1[i].buff_len + glb_dt1[i].bh_buff_len;
    int     z, b;
 
@@ -51,12 +53,22 @@ fflush(stderr);
             bmp_ptr = * (glb_dt1[i].block_zoom[z] + b);
             if (bmp_ptr != NULL)
             {
-               size += bmp_ptr->w * bmp_ptr->h + sizeof(BITMAP);
-               destroy_bitmap(bmp_ptr);
+               size += al_get_bitmap_width(bmp_ptr) * al_get_bitmap_height(bmp_ptr) + 64 /* approx sizeof bitmap header */;
+               al_destroy_bitmap(bmp_ptr);
             }
          }
          size += glb_dt1[i].bz_size[z];
          free(glb_dt1[i].block_zoom[z]);
+      }
+
+      // free cached tiles (Allegro 5 migration)
+      if (glb_dt1[i].block_cache[z] != NULL)
+      {
+         for (b=0; b < glb_dt1[i].block_num; b++)
+         {
+            cache_tile_destroy(glb_dt1[i].block_cache[z][b]);
+         }
+         free(glb_dt1[i].block_cache[z]);
       }
    }
 
@@ -160,10 +172,13 @@ void dt1_fill_subt(SUB_TILE_S * ptr, int i, long tiles_ptr, int s)
 
 // ==========================================================================
 // make the bitmap of 1 tile, for 1 zoom
-void dt1_zoom(BITMAP * src, int i, int b, int z)
+// also creates a CACHED_TILE from the source index buffer
+void dt1_zoom(ALLEGRO_BITMAP * src, int i, int b, int z,
+              const uint8_t *src_indices, int src_w, int src_h)
 {
-   BITMAP * dst;
-   int    w = src->w, h = src->h, d=1;
+   ALLEGRO_BITMAP * dst;
+   CACHED_TILE * ct;
+   int    w = src_w, h = src_h, d=1;
    char   tmp_str[100];
 
    switch(z)
@@ -176,16 +191,35 @@ void dt1_zoom(BITMAP * src, int i, int b, int z)
    }
    w /= d;
    h /= d;
-   dst = create_bitmap(w, h);
+
+   // legacy BITMAP (for rendering until Phase 4)
+   dst = al_create_bitmap(w, h);
    if (dst == NULL)
    {
       sprintf(tmp_str, "dt1_zoom(%i, %i, %i), can't make a bitmap "
          "of %i * %i pixels\n", i, b, z, w, h);
       ds1edit_error(tmp_str);
    }
-   stretch_blit(src, dst, 0, 0, src->w, src->h, 0, 0, w, h);
-
+   a5_stretch_blit(src, dst, 0, 0, al_get_bitmap_width(src), al_get_bitmap_height(src), 0, 0, w, h);
    * (glb_dt1[i].block_zoom[z] + b) = dst;
+
+   // CACHED_TILE with index data
+   ct = cache_tile_create(w, h);
+   if (ct != NULL)
+   {
+      if (d == 1)
+      {
+         // 1:1 zoom — direct copy from source indices
+         memcpy(ct->indices, src_indices, w * h);
+      }
+      else
+      {
+         // downscale the index buffer
+         index_buf_scale_down(src_indices, src_w, src_h,
+                              ct->indices, w, h);
+      }
+   }
+   glb_dt1[i].block_cache[z][b] = ct;
 }
 
 
@@ -195,13 +229,14 @@ void dt1_all_zoom_make(int i)
 {
    BLOCK_S       * b_ptr, * my_b_ptr; // pointers to current block header
    SUB_TILE_S    st_ptr;  // current sub-tile header
-   BITMAP        * tmp_bmp, * sprite;
+   ALLEGRO_BITMAP        * tmp_bmp, * sprite;
    int           b, w, h, s, x0, y0, length, y_add, z, mem_size;
    UBYTE         * data;
    WORD          format;
    long          orientation;
    char          tmp_str[100];
    int           t_mi, t_si, my_idx;
+   uint8_t       * idx_buf = NULL; // temporary index buffer for decoding
 
    b_ptr    = (BLOCK_S *) glb_dt1[i].bh_buffer;
 
@@ -210,16 +245,23 @@ void dt1_all_zoom_make(int i)
    // get mem for table of pointers
    for (z=0; z<ZM_MAX; z++)
    {
-      mem_size = sizeof(BITMAP *) * glb_dt1[i].block_num;
-      glb_dt1[i].block_zoom[z] = (BITMAP **) malloc(mem_size);
+      mem_size = sizeof(ALLEGRO_BITMAP *) * glb_dt1[i].block_num;
+      glb_dt1[i].block_zoom[z] = (ALLEGRO_BITMAP **) malloc(mem_size);
       if (glb_dt1[i].block_zoom[z] == NULL)
       {
          sprintf(tmp_str, "dt1_all_zoom_make(%i), zoom %i, not enough mem "
             "for %i bytes\n", i, z, mem_size);
          ds1edit_error(tmp_str);
+         return;
       }
       memset(glb_dt1[i].block_zoom[z], 0, mem_size);
       glb_dt1[i].bz_size[z] = mem_size;
+
+      // allocate parallel cache table
+      mem_size = sizeof(CACHED_TILE *) * glb_dt1[i].block_num;
+      glb_dt1[i].block_cache[z] = (CACHED_TILE **) malloc(mem_size);
+      if (glb_dt1[i].block_cache[z] != NULL)
+         memset(glb_dt1[i].block_cache[z], 0, mem_size);
    }
 
    // make the bitmaps
@@ -265,35 +307,47 @@ void dt1_all_zoom_make(int i)
          b_ptr ++;
          continue;
       }
-      
+
       // normal block (non-empty)
-      tmp_bmp = create_bitmap(w, h);
+      tmp_bmp = al_create_bitmap(w, h);
       if (tmp_bmp == NULL)
       {
          sprintf(tmp_str, "dt1_all_zoom_make(%i), can't make a bitmap "
             "of %i * %i pixels\n", i, w, h);
          ds1edit_error(tmp_str);
       }
-      clear(tmp_bmp);
+      a5_clear(tmp_bmp);
 
-      // draw sub-tiles in this bitmap
+      // allocate index buffer for parallel decode
+      idx_buf = (uint8_t *) calloc(w * h, 1);
+
+      // draw sub-tiles in this bitmap (and index buffer)
       for (s=0; s < b_ptr->tiles_number; s++) // for each sub-tiles
       {
          // get the sub-tile info
          dt1_fill_subt(& st_ptr, i, b_ptr->tiles_ptr, s);
-         
+
          // get infos
          x0     = st_ptr.x_pos;
          y0     = y_add + st_ptr.y_pos;
          data   = (UBYTE *) ((UBYTE *)glb_dt1[i].buffer + b_ptr->tiles_ptr + st_ptr.data_offset);
          length = st_ptr.length;
          format = st_ptr.format;
-         
-         // draw the sub-tile
+
+         // draw the sub-tile (legacy BITMAP)
          if (format == 0x0001)
             draw_sub_tile_isometric(tmp_bmp, x0, y0, data, length);
          else
             draw_sub_tile_normal(tmp_bmp, x0, y0, data, length);
+
+         // decode to index buffer (new path)
+         if (idx_buf != NULL)
+         {
+            if (format == 0x0001)
+               decode_sub_tile_isometric(idx_buf, w, h, x0, y0, data, length);
+            else
+               decode_sub_tile_normal(idx_buf, w, h, x0, y0, data, length);
+         }
       }
 
       // if a game's special tile, draw my own info over it
@@ -317,20 +371,41 @@ void dt1_all_zoom_make(int i)
                // found it, draw that tile over the game's gfx
                sprite = * (glb_dt1[0].block_zoom[ZM_11] + my_idx);
                if (sprite != NULL)
-                  draw_sprite(tmp_bmp, sprite, 0, tmp_bmp->h - sprite->h);
+                  a5_draw_sprite(tmp_bmp, sprite, 0, al_get_bitmap_height(tmp_bmp) - al_get_bitmap_height(sprite));
+
+               // also overlay in the index buffer from the cached tile
+               if (idx_buf != NULL && glb_dt1[0].block_cache[ZM_11] != NULL)
+               {
+                  CACHED_TILE * spr_ct = glb_dt1[0].block_cache[ZM_11][my_idx];
+                  if (spr_ct != NULL)
+                  {
+                     int sx, sy, dy_off = h - spr_ct->height;
+                     for (sy = 0; sy < spr_ct->height; sy++)
+                     {
+                        for (sx = 0; sx < spr_ct->width && sx < w; sx++)
+                        {
+                           uint8_t pidx = spr_ct->indices[sy * spr_ct->width + sx];
+                           if (pidx != 0 && (dy_off + sy) >= 0)
+                              idx_buf[(dy_off + sy) * w + sx] = pidx;
+                        }
+                     }
+                  }
+               }
 
                // stop the search
                my_idx = glb_dt1[0].block_num;
             }
          }
       }
-      
-      // make zoom from the bitmap, for each zoom
-      for (z=0; z<ZM_MAX; z++)
-         dt1_zoom(tmp_bmp, i, b, z);
 
-      // destroy tmp bitmap
-      destroy_bitmap(tmp_bmp);
+      // make zoom from the bitmap (and cached tile), for each zoom
+      for (z=0; z<ZM_MAX; z++)
+         dt1_zoom(tmp_bmp, i, b, z, idx_buf, w, h);
+
+      // destroy tmp bitmap and index buffer
+      al_destroy_bitmap(tmp_bmp);
+      free(idx_buf);
+      idx_buf = NULL;
 
       // next block header
       b_ptr ++;
@@ -372,6 +447,7 @@ void dt1_struct_update(int i)
       sprintf(tmp, "dt1_struct_update(%i), not enough memory for %i bytes\n",
          i, size);
       ds1edit_error(tmp);
+      return;
    }
    glb_dt1[i].bh_buff_len = size;
    dt1_bh_update(i);
@@ -412,6 +488,7 @@ int dt1_add(char * dt1name)
             {
                sprintf(tmp, "dt1_add() : file %s not found", dt1name);
                ds1edit_error(tmp);
+               return -1;
             }
 
             // dt1 update
@@ -484,5 +561,44 @@ int dt1_add_special(char * dt1name)
          dt1name, DT1_MAX);
       ds1edit_error(tmp);
       return -1; // useless, just for not having a vc6 warning
+   }
+}
+
+
+// ==========================================================================
+// rebuild all DT1 tile bitmaps from cached index data using the given palette
+// call this whenever the active palette changes (act switch, gamma change)
+void dt1_rebuild_bitmaps_from_cache(const RGBA_PALETTE *pal)
+{
+   int i, z, b;
+   ALLEGRO_BITMAP *old_bmp, *new_bmp;
+   CACHED_TILE *ct;
+
+   for (i = 0; i < DT1_MAX; i++)
+   {
+      if (glb_dt1[i].ds1_usage == 0)
+         continue;
+
+      for (z = 0; z < ZM_MAX; z++)
+      {
+         if (glb_dt1[i].block_cache[z] == NULL || glb_dt1[i].block_zoom[z] == NULL)
+            continue;
+
+         for (b = 0; b < glb_dt1[i].block_num; b++)
+         {
+            ct = glb_dt1[i].block_cache[z][b];
+            if (ct == NULL)
+               continue;
+
+            new_bmp = cache_tile_to_a5_bitmap(ct, pal);
+            if (new_bmp != NULL)
+            {
+               old_bmp = *(glb_dt1[i].block_zoom[z] + b);
+               if (old_bmp != NULL)
+                  al_destroy_bitmap(old_bmp);
+               *(glb_dt1[i].block_zoom[z] + b) = new_bmp;
+            }
+         }
+      }
    }
 }

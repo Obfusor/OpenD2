@@ -2,20 +2,9 @@
 #include <string.h>
 #include "types.h"
 
-#ifdef WIN32
-   #pragma warning (push)
-   #pragma warning (disable  : 4312 )
-#endif
-
-#include <allegro.h>
-
-#ifdef WIN32
-   #pragma warning (pop)
-#endif
-
 #include "dccinfo.h"
 
-#define DCCINFO_SAVE_PCX
+/* #define DCCINFO_SAVE_PCX */ /* Debug: saves each DCC frame as dXX-fXXX.pcx */
 
 
 // ==========================================================================
@@ -595,7 +584,7 @@ int dcc_prepare_buffer_cells(DCC_S * dcc, int d)
          cell      = & dir->buffer_ptr[x + (y * nb_cell_w)];
          cell->w   = cell_w[x];
          cell->h   = cell_h[y];
-         cell->bmp = create_sub_bitmap(dir->bmp, x0, y0, cell->w, cell->h);
+         cell->bmp = al_create_sub_bitmap(dir->bmp, x0, y0, cell->w, cell->h);
          if (cell->bmp == NULL)
          {
             sprintf(dcc_error, "dcc_prepare_buffer_cells() :\n"
@@ -723,7 +712,7 @@ int dcc_prepare_frame_cells(DCC_S * dcc, int d, int f)
          cell->y0  = y0;
          cell->w   = cell_w[x];
          cell->h   = cell_h[y];
-         cell->bmp = create_sub_bitmap(dir->bmp, x0, y0, cell->w, cell->h);
+         cell->bmp = al_create_sub_bitmap(dir->bmp, x0, y0, cell->w, cell->h);
          x0 += cell->w;
       }
       y0 += cell->h;
@@ -776,7 +765,7 @@ int dcc_fill_pixel_buffer(DCC_S * dcc, int d)
    }
 
    // frame buffer, will be simply called as "buffer" for now
-   dir->bmp = create_bitmap(dir->box.width, dir->box.height);
+   dir->bmp = al_create_bitmap(dir->box.width, dir->box.height);
    if (dir->bmp == NULL)
    {
       sprintf(dcc_error, "dcc_fill_pixel_buffer() : can't create buffer bitmap "
@@ -784,7 +773,7 @@ int dcc_fill_pixel_buffer(DCC_S * dcc, int d)
                          dir->box.width, dir->box.height);
       return 1;
    }
-   clear(dir->bmp); // all 0
+   a5_clear(dir->bmp); // all 0
 
    // create sub-bitmaps into this dir->bmp, 1 for each cells
    if (dcc_prepare_buffer_cells(dcc, d))
@@ -1029,43 +1018,31 @@ int dcc_fill_pixel_buffer(DCC_S * dcc, int d)
 
 
 // ==========================================================================
-int dcc_save_frame(DCC_S * dcc, int d, int f, BITMAP * frm_bmp)
+int dcc_save_frame(DCC_S * dcc, int d, int f, ALLEGRO_BITMAP * frm_bmp)
 {
    DCC_FRAME_S * fptr = & dcc->frame[d][f];
 
-   fptr->bmp = create_bitmap(frm_bmp->w, frm_bmp->h);
+   fptr->bmp = al_create_bitmap(al_get_bitmap_width(frm_bmp), al_get_bitmap_height(frm_bmp));
    if (fptr->bmp == NULL)
    {
       sprintf(dcc_error, "dcc_save_frame() : can't create final frame "
                          "bitmap of %i * %i pixels\n",
-                         frm_bmp->w, frm_bmp->h);
+                         al_get_bitmap_width(frm_bmp), al_get_bitmap_height(frm_bmp));
       return 1;
    }
-   blit(frm_bmp, fptr->bmp, 0, 0, 0, 0, frm_bmp->w, frm_bmp->h);
+   /* Clear then copy: frm_bmp has transparent (alpha=0) background pixels.
+    * a5_blit uses alpha blending, so transparent source pixels won't overwrite
+    * uninitialized destination content. Clear first to ensure clean background. */
+   a5_clear(fptr->bmp);
+   a5_blit(frm_bmp, fptr->bmp, 0, 0, 0, 0, al_get_bitmap_width(frm_bmp), al_get_bitmap_height(frm_bmp));
 
 
 #ifdef DCCINFO_SAVE_PCX
    {
       char    tmp[30];
-      PALETTE tmppal;
-      FILE    * in;
-      int     i;
 
-      in = fopen("act1.dat", "rb");
-      if (in != NULL)
-      {
-         for (i=0; i<256; i++)
-         {
-            tmppal[i].b = (UBYTE) fgetc(in) >> 2;
-            tmppal[i].g = (UBYTE) fgetc(in) >> 2;
-            tmppal[i].r = (UBYTE) fgetc(in) >> 2;
-         }
-         fclose(in);
-         sprintf(tmp, "d%02i-f%03i.pcx", d, f);
-         save_pcx(tmp, frm_bmp, tmppal);
-      }
-      else
-         return 1;
+      sprintf(tmp, "d%02i-f%03i.pcx", d, f);
+      al_save_bitmap(tmp, frm_bmp);
    }
 #endif
 
@@ -1086,7 +1063,7 @@ int dcc_make_frames(DCC_S * dcc, int d)
    int             nb_cell, nb_bit,
                    cell_x, cell_y, cell_idx,
                    x, y, f, c;
-   BITMAP          * frm_bmp;
+   ALLEGRO_BITMAP  * frm_bmp;
    char            add_error[256];
 
 
@@ -1098,7 +1075,7 @@ int dcc_make_frames(DCC_S * dcc, int d)
    }
 
    // create the temp frame bitmap (size = current direction box)
-   frm_bmp = create_bitmap(dir->box.width, dir->box.height);
+   frm_bmp = al_create_bitmap(dir->box.width, dir->box.height);
    if (frm_bmp == NULL)
    {
       sprintf(dcc_error, "dcc_make_frames() : can't create tmp frame "
@@ -1111,7 +1088,7 @@ int dcc_make_frames(DCC_S * dcc, int d)
    // for all frames
    for (f=0; f < dcc->header.frames_per_dir; f++)
    {
-      clear(frm_bmp); // clear the final frame bitmap (to index 0)
+      a5_clear(frm_bmp); // clear the final frame bitmap (to index 0)
       frame = & dcc->frame[d][f];
       nb_cell = frame->nb_cells_w * frame->nb_cells_h;
 
@@ -1136,21 +1113,21 @@ int dcc_make_frames(DCC_S * dcc, int d)
             if ((cell->w != buff_cell->last_w) || (cell->h != buff_cell->last_h))
             {
                // different sizes
-               clear(cell->bmp); // set all pixels of the frame cell to 0
+               a5_clear(cell->bmp); // set all pixels of the frame cell to 0
             }
             else
             {
                // same sizes
                
                // copy the old frame cell into its new position
-               blit(dir->bmp, dir->bmp,
+               a5_blit(dir->bmp, dir->bmp,
                     buff_cell->last_x0, buff_cell->last_y0,
                     cell->x0, cell->y0,
                     cell->w, cell->h
                );
-               
+
                // copy it again, into the final frame bitmap
-               blit(cell->bmp, frm_bmp,
+               a5_blit(cell->bmp, frm_bmp,
                     0, 0,
                     cell->x0, cell->y0,
                     cell->w, cell->h
@@ -1164,7 +1141,7 @@ int dcc_make_frames(DCC_S * dcc, int d)
             if (pbe->val[0] == pbe->val[1])
             {
                // fill FRAME cell to color val[0]
-               clear_to_color(cell->bmp, pbe->val[0]);
+               a5_clear_to_color(cell->bmp, pbe->val[0]);
             }
             else
             {
@@ -1189,13 +1166,13 @@ int dcc_make_frames(DCC_S * dcc, int d)
                         strcat(dcc_error, add_error);
                         return 1;
                      }
-                     putpixel(cell->bmp, x, y, pbe->val[pix]);
+                     a5_putpixel(cell->bmp, x, y, pbe->val[pix]);
                   }
                }
             }
 
             // copy the frame cell into the frame bitmap
-            blit(cell->bmp, frm_bmp,
+            a5_blit(cell->bmp, frm_bmp,
                  0, 0,
                  cell->x0, cell->y0,
                  cell->w, cell->h
@@ -1221,7 +1198,7 @@ int dcc_make_frames(DCC_S * dcc, int d)
    }
 
    // end
-   destroy_bitmap(frm_bmp);
+   al_destroy_bitmap(frm_bmp);
    return 0;
 }
 
@@ -1795,7 +1772,7 @@ void dcc_destroy(DCC_S * dcc)
             nb_cell = dcc->frame[d][f].nb_cells_w * dcc->frame[d][f].nb_cells_h;
             for (i=0; i < nb_cell; i++)
                if (dcc->frame[d][f].cell[i].bmp)
-                  destroy_bitmap(dcc->frame[d][f].cell[i].bmp);
+                  al_destroy_bitmap(dcc->frame[d][f].cell[i].bmp);
 
             free(dcc->frame[d][f].cell);
             dcc->frame[d][f].cell = NULL;
@@ -1803,7 +1780,7 @@ void dcc_destroy(DCC_S * dcc)
 
          //destroy frame bitmap
          if (dcc->frame[d][f].bmp)
-            destroy_bitmap(dcc->frame[d][f].bmp);
+            al_destroy_bitmap(dcc->frame[d][f].bmp);
       }
 
       // free pixels buffer
@@ -1819,7 +1796,7 @@ void dcc_destroy(DCC_S * dcc)
          nb_cell = dcc->direction[d].nb_cells_w * dcc->direction[d].nb_cells_h;
          for (i=0; i < nb_cell; i++)
             if (dcc->direction[d].buffer_ptr[i].bmp)
-               destroy_bitmap(dcc->direction[d].buffer_ptr[i].bmp);
+               al_destroy_bitmap(dcc->direction[d].buffer_ptr[i].bmp);
                
          free(dcc->direction[d].buffer_ptr);
          dcc->direction[d].buffer_ptr = NULL;
@@ -1827,7 +1804,7 @@ void dcc_destroy(DCC_S * dcc)
 
       // destroy buffer bitmap
       if (dcc->direction[d].bmp)
-         destroy_bitmap(dcc->direction[d].bmp);
+         al_destroy_bitmap(dcc->direction[d].bmp);
    }
 
    // free general structure of this dcc

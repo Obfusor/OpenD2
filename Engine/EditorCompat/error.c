@@ -8,22 +8,8 @@
 // fatal error
 void ds1edit_error(const char * text)
 {
-   // log
-   printf("\nds1edit_error() :\n%s\n\n", text);
-   fflush(stdout);
-   fclose(stdout);
-
-   // console output
-   fprintf(
-      stderr,
-      "\n\nds1edit_error() :\n%s\n\n",
-      text
-   );
+   // Log error to stderr (non-fatal in OpenD2 — the standalone editor
+   // calls exit() here, but the game must continue running).
+   fprintf(stderr, "ds1edit_error: %s\n", text);
    fflush(stderr);
-
-   // window GUI, if possible
-   allegro_message(text);
-
-   // exit
-   exit(DS1ERR_OTHER);
 }
