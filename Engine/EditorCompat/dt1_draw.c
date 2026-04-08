@@ -3,10 +3,8 @@
 
 
 // ==========================================================================
-// Legacy functions: draw to Allegro 4 BITMAP via putpixel (used by rendering
-// code until it migrates to Allegro 5 in Phase 4).
-// The new decode_sub_tile_* and index_buf_scale_down functions are in
-// dt1_decode.c (Allegro-independent, unit-testable).
+// Draw sub-tile pixels to an ALLEGRO_BITMAP via a5_putpixel().
+// The Allegro-independent equivalents are in dt1_decode.c.
 
 void draw_sub_tile_isometric (ALLEGRO_BITMAP * dst, int x0, int y0, UBYTE * data, int length)
 {

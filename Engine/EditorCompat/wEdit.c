@@ -1715,11 +1715,9 @@ void wedit_test(int ds1_idx, int tx, int ty)
    b->state          = BS_OFF;
    b->tab_have_tiles = b->active = wedit_tab_have(ds1_idx, BT_SPECIAL);
 
-/* set_color_depth removed */
 
    w->tmp_edit = al_create_bitmap(al_get_bitmap_width(w->w_tiles.inside), al_get_bitmap_height(w->w_tiles.inside));
 
-/* set_color_depth removed */
 
    if (bt_sel >= 1)
    {
