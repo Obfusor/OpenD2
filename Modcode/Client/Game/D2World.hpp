@@ -88,6 +88,10 @@ private:
     float m_cameraX;
     float m_cameraY;
 
+    // Smooth unit position interpolation (sub-tile precision)
+    float m_playerDrawX; // interpolated tile X (float)
+    float m_playerDrawY; // interpolated tile Y (float)
+
     // Debug overlay
     IRenderObject *m_debugText;
 
@@ -128,11 +132,18 @@ private:
     void LoadDT1sForLevel(int nLevelId);
     const TileEntry *FindTileEntry(long orientation, long mainIndex, long subIndex);
 
-    // Isometric projection
+    // Isometric projection (integer tile coords)
     inline void TileToScreen(int tileX, int tileY, float &screenX, float &screenY)
     {
         screenX = (float)(tileX - tileY) * HALF_W - m_cameraX;
         screenY = (float)(tileX + tileY) * HALF_H - m_cameraY;
+    }
+
+    // Isometric projection (float tile coords for smooth interpolation)
+    inline void TileToScreenF(float tileX, float tileY, float &screenX, float &screenY)
+    {
+        screenX = (tileX - tileY) * (float)HALF_W - m_cameraX;
+        screenY = (tileX + tileY) * (float)HALF_H - m_cameraY;
     }
 
     // DS1 cell prop decoding

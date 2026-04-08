@@ -1,5 +1,6 @@
 #include "D2World.hpp"
 #include "D2Game.hpp"
+#include <allegro5/allegro_primitives.h>
 
 D2ClientWorld *gpWorld = nullptr;
 
@@ -14,6 +15,8 @@ D2ClientWorld::D2ClientWorld()
       m_mapHeight(0),
       m_cameraX(0.0f),
       m_cameraY(0.0f),
+      m_playerDrawX(-1.0f),
+      m_playerDrawY(-1.0f),
       m_debugText(nullptr),
       m_act(0)
 {
@@ -428,32 +431,61 @@ void D2ClientWorld::DrawUnits()
     if (gpGame == nullptr)
         return;
 
-    D2UnitList &units = gpGame->GetUnits();
-
-    // Draw local player and follow with camera
     D2UnitStrc *pPlayer = gpGame->GetLocalPlayer();
-    if (pPlayer != nullptr)
+    if (pPlayer == nullptr)
+        return;
+
+    float targetX = (float)pPlayer->wX;
+    float targetY = (float)pPlayer->wY;
+
+    // Initialize interpolated position on first frame
+    if (m_playerDrawX < 0)
     {
-        // Center camera on player position
-        CenterCameraOnTile(pPlayer->wX, pPlayer->wY);
+        m_playerDrawX = targetX;
+        m_playerDrawY = targetY;
+    }
 
-        EnsureUnitRender(pPlayer);
+    // Smooth interpolation toward actual position (lerp)
+    float lerpSpeed = 0.15f;
+    m_playerDrawX += (targetX - m_playerDrawX) * lerpSpeed;
+    m_playerDrawY += (targetY - m_playerDrawY) * lerpSpeed;
 
-        // Find the render info and position it
-        for (auto &info : m_unitRenders)
+    // Snap when very close to avoid floating
+    if (fabsf(targetX - m_playerDrawX) < 0.05f) m_playerDrawX = targetX;
+    if (fabsf(targetY - m_playerDrawY) < 0.05f) m_playerDrawY = targetY;
+
+    // Center camera on interpolated player position
+    m_cameraX = (m_playerDrawX - m_playerDrawY) * (float)HALF_W - SCREEN_W / 2.0f;
+    m_cameraY = (m_playerDrawX + m_playerDrawY) * (float)HALF_H - SCREEN_H / 2.0f;
+
+    // Convert interpolated position to screen coords
+    float sx, sy;
+    TileToScreenF(m_playerDrawX, m_playerDrawY, sx, sy);
+    float drawX = sx + HALF_W;
+    float drawY = sy + HALF_H;
+
+    // Try token-based rendering
+    EnsureUnitRender(pPlayer);
+    bool tokenDrawn = false;
+    for (auto &info : m_unitRenders)
+    {
+        if (info.dwUnitId == pPlayer->dwUnitId && info.renderObj != nullptr)
         {
-            if (info.dwUnitId == pPlayer->dwUnitId && info.renderObj != nullptr)
-            {
-                float sx, sy;
-                TileToScreen(pPlayer->wX, pPlayer->wY, sx, sy);
-                // Center token on the tile (offset to center of diamond)
-                info.renderObj->SetDrawCoords(
-                    (int)(sx + HALF_W), (int)(sy + HALF_H), 0, 0);
-                info.renderObj->Draw();
-                break;
-            }
+            info.renderObj->SetDrawCoords((int)drawX, (int)drawY, 0, 0);
+            info.renderObj->Draw();
+            tokenDrawn = true;
+            break;
         }
     }
+
+    // Always draw player marker (visible even if token fails to load)
+    // Isometric diamond shape representing the player
+    float mx = drawX, my = drawY - 4.0f;
+    al_draw_filled_triangle(mx, my - 12, mx - 8, my, mx + 8, my,
+        al_map_rgba(220, 180, 50, 220));
+    al_draw_filled_triangle(mx, my + 12, mx - 8, my, mx + 8, my,
+        al_map_rgba(180, 140, 30, 220));
+    al_draw_circle(mx, my, 10.0f, al_map_rgba(255, 220, 80, 255), 1.5f);
 }
 
 void D2ClientWorld::ScrollCamera(float dx, float dy)
