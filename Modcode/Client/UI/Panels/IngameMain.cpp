@@ -1,4 +1,5 @@
 #include "IngameMain.hpp"
+#include <allegro5/allegro_primitives.h>
 
 // Stat IDs for HUD display
 enum
@@ -14,42 +15,42 @@ IngameMain::IngameMain()
       m_miniPanelButton(nullptr), m_leftAttackButton(nullptr), m_rightAttackButton(nullptr),
       m_bgReference(nullptr), m_background(nullptr)
 {
-    x = 0;
-    y = 480; // Bottom of 800x600 screen (HUD area: 480-600)
+    // HUD layout constants for 1280x720
+    static const int SCREEN_W = 1280;
+    static const int SCREEN_H = 720;
+    static const int HUD_Y = SCREEN_H - 40; // Bottom bar Y
+    static const int HUD_TEXT_Y = SCREEN_H - 30;
 
-    // HP text (left orb area)
+    x = 0;
+    y = HUD_Y;
+
+    // HP text (bottom-left)
     m_hpText = engine->renderer->AllocateObject(1);
     m_hpText->AttachFontResource(cl.font16);
-    m_hpText->SetDrawCoords(45, 555, 0, 0);
+    m_hpText->SetDrawCoords(20, HUD_TEXT_Y, 0, 0);
     m_hpText->SetTextColor(TextColor_Red);
 
-    // Mana text (right orb area)
+    // Mana text (bottom-right)
     m_manaText = engine->renderer->AllocateObject(1);
     m_manaText->AttachFontResource(cl.font16);
-    m_manaText->SetDrawCoords(710, 555, 0, 0);
+    m_manaText->SetDrawCoords(SCREEN_W - 130, HUD_TEXT_Y, 0, 0);
     m_manaText->SetTextColor(TextColor_Blue);
 
-    // Level display (center)
+    // Level display (bottom-center)
     m_levelText = engine->renderer->AllocateObject(1);
     m_levelText->AttachFontResource(cl.font16);
-    m_levelText->SetDrawCoords(380, 555, 0, 0);
+    m_levelText->SetDrawCoords(SCREEN_W / 2, HUD_TEXT_Y, 0, 0);
     m_levelText->SetTextColor(TextColor_Gold);
 
-    // Character name (center top of HUD)
+    // Character name (bottom-center, above level)
     m_nameText = engine->renderer->AllocateObject(1);
     m_nameText->AttachFontResource(cl.font16);
-    m_nameText->SetDrawCoords(350, 540, 0, 0);
+    m_nameText->SetDrawCoords(SCREEN_W / 2 - 30, HUD_TEXT_Y - 16, 0, 0);
     m_nameText->SetTextColor(TextColor_White);
 
-    // Try to load the HUD control panel background
-    m_bgReference = engine->graphics->CreateReference(
-        "data\\global\\ui\\PANEL\\800ctrlpnl7.dc6", UsagePolicy_Permanent);
-    if (m_bgReference)
-    {
-        m_background = engine->renderer->AllocateObject(0);
-        m_background->AttachCompositeTextureResource(m_bgReference, 0, 1);
-        m_background->SetDrawCoords(0, 480, 800, 120);
-    }
+    // No background image — the 800ctrlpnl7.dc6 was designed for 800x600
+    m_bgReference = nullptr;
+    m_background = nullptr;
 }
 
 IngameMain::~IngameMain()
@@ -64,9 +65,8 @@ IngameMain::~IngameMain()
 
 void IngameMain::Draw()
 {
-    // Draw HUD background
-    if (m_background)
-        m_background->Draw();
+    // Draw a simple dark bar at the bottom of the screen
+    al_draw_filled_rectangle(0, 720 - 40, 1280, 720, al_map_rgba(0, 0, 0, 180));
 
     // Update HP/Mana from save data
     D2SaveExtendedData &ext = cl.currentSave.extended;

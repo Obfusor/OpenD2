@@ -1,4 +1,5 @@
 #include "D2Client.hpp"
+#include "../../Shared/D2DebugLog.hpp"
 #include "MapSelector.hpp"
 #include "MapRenderer.hpp"
 #include "UI/Menus/Trademark.hpp"
@@ -25,6 +26,10 @@ static void D2Client_InitializeClient(D2GameConfigStrc *pConfig, OpenD2ConfigStr
 {
 	config = pConfig;
 	openConfig = pOpenConfig;
+
+	// Initialize debug logging
+	D2Log::Init("debug.log");
+	D2LOG(D2LogCat::General, "OpenD2 client initializing");
 
 	memset(&cl, 0, sizeof(D2Client));
 
@@ -387,6 +392,9 @@ static void D2Client_LoadData()
 	else if (cl.nLoadState == 1)
 	{ // load interface
 
+		// Set up server connection (determines local vs remote)
+		D2Client_SetupServerConnection();
+
 		// Prime the server for init.
 		if (cl.bLocalServer)
 		{
@@ -414,7 +422,9 @@ static void D2Client_LoadData()
 			{
 				gpWorld = new D2ClientWorld();
 			}
-			gpWorld->LoadLevel(D2Client_GetStartingTownLevel());
+			// Force Act 1 town — only DrlgType=2 (preset) levels are supported currently.
+		// GetStartingTownLevel() reads the save's last act, which may be a non-preset level.
+		gpWorld->LoadLevel(D2LEVEL_ACT1_TOWN);
 		}
 		cl.nLoadState++;
 	}
@@ -467,10 +477,18 @@ static void D2Client_LoadData()
 			// since the server stub doesn't send D2SPACKET_ASSIGNPLAYER
 			if (cl.bLocalServer)
 			{
+				// Spawn at the town entry warp point (parsed from DS1 objects)
+				WORD spawnX = gpWorld ? gpWorld->GetSpawnX() : 28;
+				WORD spawnY = gpWorld ? gpWorld->GetSpawnY() : 20;
+				BYTE saveClass = cl.currentSave.header.nCharClass;
+				D2LOG(D2LogCat::General, "Save header: name='%s' class=%d level=%d status=0x%02X",
+					cl.currentSave.header.szCharacterName, (int)saveClass,
+					(int)cl.currentSave.header.nCharLevel, (int)cl.currentSave.header.nCharStatus);
 				D2UnitStrc *pPlayer = gpGame->AddPlayer(
-					1, cl.currentSave.header.nCharClass,
+					1, saveClass,
 					cl.currentSave.header.szCharacterName,
-					30, 30); // Town center position
+					spawnX, spawnY);
+				D2LOG(D2LogCat::General, "Player spawned at (%d,%d) class=%d", (int)spawnX, (int)spawnY, (int)saveClass);
 
 				gpGame->Initialize(1, nSaveAct, (WORD)nTownLevel,
 								   cl.currentSave.header.dwSeed,

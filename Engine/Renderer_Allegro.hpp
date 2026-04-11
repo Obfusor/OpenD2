@@ -90,6 +90,7 @@ public:
 	virtual void SetTokenMode(int newMode) override;
 	virtual void SetTokenArmorLevel(int component, const char *armorLevel) override;
 	virtual void SetTokenHitClass(int hitclass) override;
+	virtual int GetAnimFrameCount() override { return m_animFrameCount; }
 };
 
 /*

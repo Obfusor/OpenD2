@@ -462,19 +462,15 @@ namespace D2Widgets
 		if (nCurrentSelection < 0 || nCurrentSelection >= (int)sortedSaves.size())
 			return;
 
-		// The saves linked list still holds the path data — but we can get it from sortedSaves too
-		// For now, use the linked list via pCharacterData
-		CharacterSaveData *pCurrent = pCharacterData;
-		for (int i = 0; i < nCurrentSelection && pCurrent != nullptr; i++, pCurrent = pCurrent->pNext)
-			;
-
-		if (pCurrent == nullptr)
+		// Use the sorted list to get the correct character for the selected row
+		CharSelectSave *pSelected = sortedSaves[nCurrentSelection];
+		if (pSelected == nullptr)
 			return;
 
-		memcpy(&cl.currentSave.header, &pCurrent->header, sizeof(pCurrent->header));
-		D2Lib::strncpyz(cl.szCurrentSave, pCurrent->path, MAX_D2PATH_ABSOLUTE);
+		memcpy(&cl.currentSave.header, &pSelected->GetSaveHeader(), sizeof(D2SaveHeader));
+		D2Lib::strncpyz(cl.szCurrentSave, pSelected->GetPath(), MAX_D2PATH_ABSOLUTE);
 
-		D2Client_ParseFullSave(pCurrent->path);
+		D2Client_ParseFullSave(pSelected->GetPath());
 	}
 
 	void CharSelectList::ScrollUp()

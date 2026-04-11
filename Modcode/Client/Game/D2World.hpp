@@ -36,6 +36,8 @@ public:
     int GetLevelId() const { return m_nCurrentLevel; }
     int GetMapWidth() const { return m_mapWidth; }
     int GetMapHeight() const { return m_mapHeight; }
+    WORD GetSpawnX() const { return m_spawnX; }
+    WORD GetSpawnY() const { return m_spawnY; }
 
     // Coordinate conversion (public for click-to-move)
     void ScreenToTile(float screenX, float screenY, int &tileX, int &tileY)
@@ -94,6 +96,7 @@ private:
 
     // Debug overlay
     IRenderObject *m_debugText;
+    int m_tokenDebugFrames;
 
     // Unit rendering (S01: token-based character rendering in world)
     struct UnitRenderInfo
@@ -127,6 +130,11 @@ private:
     void BuildEditorTileLookup();
     const EditorTileEntry *FindEditorTile(long orientation, long mainIndex, long subIndex);
     ALLEGRO_BITMAP *DecodeTileBitmap(int dt1Index, int blockIndex, int act);
+
+    // Spawn point
+    WORD m_spawnX;
+    WORD m_spawnY;
+    void FindTownEntrySpawn();
 
     // Internal helpers
     void LoadDT1sForLevel(int nLevelId);

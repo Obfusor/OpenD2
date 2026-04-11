@@ -90,6 +90,7 @@ public:
     D2RosterEntry *GetRoster() { return m_pRoster; }
 
     // Game state accessors
+    DWORD GetLocalPlayerId() const { return m_dwLocalPlayerId; }
     BYTE GetCurrentAct() const { return m_nCurrentAct; }
     WORD GetCurrentArea() const { return m_wCurrentArea; }
     DWORD GetGameFlags() const { return m_dwGameFlags; }

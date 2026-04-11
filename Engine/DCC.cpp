@@ -1,6 +1,7 @@
 #include "DCC.hpp"
 #include "Logging.hpp"
 #include "FileSystem.hpp"
+#include "../Shared/D2DebugLog.hpp"
 #include <Windows.h>
 
 #define MAX_DCC_HASH		32768
@@ -35,6 +36,7 @@ namespace DCC
 		file->dwFileSize = FS::Open(szPath, &f, OpenD2FileModes::FS_READ, true);
 		if (f == INVALID_HANDLE)
 		{
+			D2LOG_ERROR(D2LogCat::Token, "DCC file not found: %s", szPath);
 			return;
 		}
 
@@ -42,10 +44,13 @@ namespace DCC
 		if (file->pFileBytes == nullptr)
 		{
 			FS::CloseFile(f);
+			D2LOG_ERROR(D2LogCat::Token, "DCC alloc failed for %s (%d bytes)", szPath, (int)file->dwFileSize);
+			return;
 		}
 
 		FS::Read(f, file->pFileBytes, file->dwFileSize);
 		FS::CloseFile(f);
+		D2LOG(D2LogCat::Token, "DCC loaded: %s (%d bytes)", szPath, (int)file->dwFileSize);
 	}
 
 	void UnloadAnimation(DCCFile* animation)

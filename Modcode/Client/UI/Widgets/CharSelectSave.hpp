@@ -53,6 +53,8 @@ namespace D2Widgets
 		int GetLevel() const { return saveHeader.nCharLevel; }
 		int GetCharClass() const { return saveHeader.nCharClass; }
 		int GetDifficultyRank() const; // 0=Normal, 1=Nightmare, 2=Hell
+		const D2SaveHeader& GetSaveHeader() const { return saveHeader; }
+		const char* GetPath() const { return path; }
 		void SetSelected(bool sel) { bIsSelected = sel; }
 	};
 }

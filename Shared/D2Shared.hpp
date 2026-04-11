@@ -829,6 +829,9 @@ public:
 	virtual void SetTokenMode(int newMode) = 0;
 	virtual void SetTokenArmorLevel(int component, const char *armorLevel) = 0;
 	virtual void SetTokenHitClass(int hitclass) = 0;
+
+	// Debug/diagnostic
+	virtual int GetAnimFrameCount() = 0;
 };
 
 //////////////////////////////////////////////////

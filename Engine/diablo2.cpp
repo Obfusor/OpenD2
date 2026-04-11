@@ -15,6 +15,7 @@
 #include "TBL_Font.hpp"
 #include "TBL_Text.hpp"
 #include "Window.hpp"
+#include "../Shared/D2DebugLog.hpp"
 
 /////////////////////////////////////////////////////////////////////////////////////////////////////
 
@@ -445,6 +446,7 @@ int InitGame(int argc, char **argv)
 	OpenD2ConfigStrc openD2Config{0};
 	DWORD dwDesiredFrameMsec;
 
+	D2Log::Init("debug_engine.log");
 	PopulateConfiguration(&config, &openD2Config);
 	ParseCommandline(argc, argv, &config, &openD2Config); // Set default basepath to executable directory if not specified
 	if (openD2Config.szBasePath[0] == 0x0)

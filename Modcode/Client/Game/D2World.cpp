@@ -1,5 +1,6 @@
 #include "D2World.hpp"
 #include "D2Game.hpp"
+#include "../../../Shared/D2DebugLog.hpp"
 #include <allegro5/allegro_primitives.h>
 
 D2ClientWorld *gpWorld = nullptr;
@@ -18,6 +19,9 @@ D2ClientWorld::D2ClientWorld()
       m_playerDrawX(-1.0f),
       m_playerDrawY(-1.0f),
       m_debugText(nullptr),
+      m_tokenDebugFrames(0),
+      m_spawnX(0),
+      m_spawnY(0),
       m_act(0)
 {
     m_statusText[0] = '\0';
@@ -278,6 +282,9 @@ void D2ClientWorld::LoadLevel(int nLevelId)
 
     engine->DS1_GetSize(m_ds1Handle, m_mapWidth, m_mapHeight);
 
+    // Find the town entry warp object for spawn position
+    FindTownEntrySpawn();
+
     // Center camera on the isometric center of the map
     float centerIsoX = (float)(m_mapWidth / 2 - m_mapHeight / 2) * HALF_W;
     float centerIsoY = (float)(m_mapWidth / 2 + m_mapHeight / 2) * HALF_H;
@@ -383,13 +390,16 @@ void D2ClientWorld::EnsureUnitRender(D2UnitStrc *pUnit)
         if (charClass < 0 || charClass >= D2CLASS_MAX)
             charClass = 0;
 
+        D2LOG(D2LogCat::Token, "EnsureUnitRender: creating token for class=%d (%s)",
+            charClass, g_szClassTokens[charClass]);
         info.token = engine->graphics->CreateReference(TOKEN_CHAR, g_szClassTokens[charClass]);
+        D2LOG(D2LogCat::Token, "EnsureUnitRender: token=%p", (void*)info.token);
     }
-    // Future: UNIT_MONSTER token loading will go here (S05)
 
     if (info.token != nullptr)
     {
-        info.renderObj = engine->renderer->AllocateObject(2); // priority above tiles
+        info.renderObj = engine->renderer->AllocateObject(2);
+        D2LOG(D2LogCat::Token, "EnsureUnitRender: renderObj=%p, attaching token", (void*)info.renderObj);
         info.renderObj->AttachTokenResource(info.token);
         info.renderObj->SetTokenHitClass(WC_HTH);
         info.renderObj->SetTokenMode(pUnit->dwMode);
@@ -467,25 +477,86 @@ void D2ClientWorld::DrawUnits()
     // Try token-based rendering
     EnsureUnitRender(pPlayer);
     bool tokenDrawn = false;
+    int tokenFrames = 0;
+    static bool s_loggedOnce = false;
     for (auto &info : m_unitRenders)
     {
         if (info.dwUnitId == pPlayer->dwUnitId && info.renderObj != nullptr)
         {
             info.renderObj->SetDrawCoords((int)drawX, (int)drawY, 0, 0);
             info.renderObj->Draw();
-            tokenDrawn = true;
+            tokenFrames = info.renderObj->GetAnimFrameCount();
+            tokenDrawn = (tokenFrames > 0);
+            if (!s_loggedOnce)
+            {
+                D2LOG(D2LogCat::Token, "DrawUnits: first draw, frames=%d drawn=%d", tokenFrames, tokenDrawn ? 1 : 0);
+                s_loggedOnce = true;
+            }
             break;
         }
     }
+    if (!s_loggedOnce && m_unitRenders.empty())
+    {
+        D2LOG_ERROR(D2LogCat::Token, "DrawUnits: no unit renders created!");
+        s_loggedOnce = true;
+    }
 
-    // Always draw player marker (visible even if token fails to load)
-    // Isometric diamond shape representing the player
+    // Always draw player marker
     float mx = drawX, my = drawY - 4.0f;
     al_draw_filled_triangle(mx, my - 12, mx - 8, my, mx + 8, my,
         al_map_rgba(220, 180, 50, 220));
     al_draw_filled_triangle(mx, my + 12, mx - 8, my, mx + 8, my,
         al_map_rgba(180, 140, 30, 220));
     al_draw_circle(mx, my, 10.0f, al_map_rgba(255, 220, 80, 255), 1.5f);
+
+    // Store token debug info for the debug overlay
+    m_tokenDebugFrames = tokenFrames;
+}
+
+/*
+ *	Find the town entry spawn point by scanning DS1 objects.
+ *	Looks for warp/portal objects (type 59, 60) or the town start
+ *	dummy object. Falls back to map center if none found.
+ *	DS1 object coordinates are in subtiles (5 per tile).
+ */
+void D2ClientWorld::FindTownEntrySpawn()
+{
+    m_spawnX = (WORD)(m_mapWidth / 2);
+    m_spawnY = (WORD)(m_mapHeight / 2);
+
+    if (m_ds1Handle == INVALID_HANDLE)
+        return;
+
+    DWORD numObjects = engine->DS1_GetObjectCount(m_ds1Handle);
+    D2LOG(D2LogCat::General, "DS1 has %d objects, scanning for town entry...", (int)numObjects);
+
+    // Scan all objects, log them, and pick the best spawn point.
+    // Priority: type 59/60 (portal) > first object with reasonable coords > map center
+    bool foundWarp = false;
+    for (DWORD i = 0; i < numObjects; i++)
+    {
+        const DS1Object &obj = engine->DS1_GetObject(m_ds1Handle, i);
+        D2LOG_DEBUG(D2LogCat::General, "  obj[%d]: type=%d id=%d pos=(%d,%d)",
+            (int)i, (int)obj.dwType, (int)obj.dwId, (int)obj.dwX, (int)obj.dwY);
+
+        // DS1 object coords are in subtiles (5 per tile)
+        WORD tileX = (WORD)(obj.dwX / 5);
+        WORD tileY = (WORD)(obj.dwY / 5);
+
+        // Town portal / permanent portal
+        if (obj.dwType == 59 || obj.dwType == 60)
+        {
+            m_spawnX = tileX;
+            m_spawnY = tileY;
+            foundWarp = true;
+            D2LOG(D2LogCat::General, "  -> Town warp found at tile (%d,%d)", (int)m_spawnX, (int)m_spawnY);
+        }
+    }
+
+    if (!foundWarp)
+    {
+        D2LOG(D2LogCat::General, "  No warp object found, using map center (%d,%d)", (int)m_spawnX, (int)m_spawnY);
+    }
 }
 
 void D2ClientWorld::ScrollCamera(float dx, float dy)
@@ -602,14 +673,30 @@ void D2ClientWorld::Draw()
     // Draw units (players, NPCs) as animated tokens
     DrawUnits();
 
-    // Draw debug overlay with status text
-    if (m_debugText && m_statusText[0] != '\0')
+    // Draw debug overlay with player status
+    if (m_debugText)
     {
+        char dbg[256];
+        if (gpGame == nullptr)
+        {
+            snprintf(dbg, sizeof(dbg), "%s gpGame=NULL", m_statusText);
+        }
+        else
+        {
+            D2UnitStrc *pl = gpGame->GetLocalPlayer();
+            if (pl == nullptr)
+                snprintf(dbg, sizeof(dbg), "%s player=NULL id=%d", m_statusText, (int)gpGame->GetLocalPlayerId());
+            else
+                snprintf(dbg, sizeof(dbg), "%s @%d,%d tgt=%d,%d mode=%d tok=%d",
+                    m_statusText, (int)pl->wX, (int)pl->wY,
+                    (int)pl->wTargetX, (int)pl->wTargetY, (int)pl->dwMode,
+                    m_tokenDebugFrames);
+        }
         char16_t wideStatus[256];
         for (int i = 0; i < 256; i++)
         {
-            wideStatus[i] = (char16_t)(unsigned char)m_statusText[i];
-            if (m_statusText[i] == '\0')
+            wideStatus[i] = (char16_t)(unsigned char)dbg[i];
+            if (dbg[i] == '\0')
                 break;
         }
         m_debugText->SetText(wideStatus);

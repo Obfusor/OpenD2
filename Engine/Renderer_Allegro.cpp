@@ -3,6 +3,7 @@
 #include "Palette.hpp"
 #include "DCC.hpp"
 #include "Logging.hpp"
+#include "../Shared/D2DebugLog.hpp"
 #include "imgui.h"
 #include "imgui_impl_allegro5.h"
 #include <cstring>
@@ -502,66 +503,165 @@ void AllegroRenderObject::LoadTokenLayers()
 	if (m_frameOffsetY) { free(m_frameOffsetY); m_frameOffsetY = nullptr; }
 	m_animFrameCount = 0;
 
-	// Try loading components in render order: legs, torso, head, arms
-	// For simplicity, find the first component that loads successfully
+	// D2 render order for character components (back to front)
 	static const int componentOrder[] = {
-		COMP_TORSO, COMP_LEGS, COMP_HEAD, COMP_RIGHTARM, COMP_LEFTARM,
+		COMP_LEGS, COMP_TORSO, COMP_HEAD, COMP_RIGHTARM, COMP_LEFTARM,
 		COMP_RIGHTHAND, COMP_LEFTHAND, COMP_SHIELD
 	};
+	static const int NUM_COMPONENTS = 8;
 
-	IGraphicsReference *graphic = nullptr;
-	for (int i = 0; i < 8 && !graphic; i++)
-	{
-		int comp = componentOrder[i];
-		graphic = m_tokenRef->GetTokenGraphic(comp, m_tokenHitClass,
-			m_tokenMode, m_tokenArmorLevel[comp]);
-	}
-
-	if (!graphic)
-		return;
-
-	// Decode the DCC using the animation path
 	g_dccDecodePalette = Pal::GetPalette(m_pRenderer->GetGlobalPalette());
-	std::vector<ALLEGRO_BITMAP *> decodedFrames;
-	g_dccFrameBitmaps = &decodedFrames;
 
-	graphic->LoadSingleDirection(m_tokenDirection, DCC_AllocCallback, DCC_DecodeCallback);
+	// Decode each component layer separately
+	struct LayerData {
+		IGraphicsReference *graphic;
+		std::vector<ALLEGRO_BITMAP *> frames;
+	};
+	LayerData layers[NUM_COMPONENTS];
+	int maxFrames = 0;
 
-	g_dccFrameBitmaps = nullptr;
+	static const char *compNames[] = {"HD","TR","LG","RA","LA","RH","LH","SH","S1","S2","S3","S4","S5","S6","S7","S8"};
 
-	if (g_dccDecodeBitmap)
+	D2LOG(D2LogCat::Token, "LoadTokenLayers: mode=%d hc=%d dir=%d", m_tokenMode, m_tokenHitClass, m_tokenDirection);
+
+	int foundCount = 0;
+	for (int c = 0; c < NUM_COMPONENTS; c++)
 	{
-		al_destroy_bitmap(g_dccDecodeBitmap);
-		g_dccDecodeBitmap = nullptr;
+		int comp = componentOrder[c];
+		layers[c].graphic = m_tokenRef->GetTokenGraphic(
+			comp, m_tokenHitClass,
+			m_tokenMode, m_tokenArmorLevel[comp]);
+
+		if (!layers[c].graphic)
+		{
+			D2LOG_DEBUG(D2LogCat::Token, "  comp %d (%s): no graphic", comp, comp < 16 ? compNames[comp] : "?");
+			continue;
+		}
+
+		g_dccFrameBitmaps = &layers[c].frames;
+		layers[c].graphic->LoadSingleDirection(m_tokenDirection,
+			DCC_AllocCallback, DCC_DecodeCallback);
+		g_dccFrameBitmaps = nullptr;
+
+		if (g_dccDecodeBitmap)
+		{
+			al_destroy_bitmap(g_dccDecodeBitmap);
+			g_dccDecodeBitmap = nullptr;
+		}
+
+		D2LOG(D2LogCat::Token, "  comp %d (%s): %d frames decoded", comp, comp < 16 ? compNames[comp] : "?", (int)layers[c].frames.size());
+		foundCount++;
+
+		if ((int)layers[c].frames.size() > maxFrames)
+			maxFrames = (int)layers[c].frames.size();
 	}
 
-	int decoded = (int)decodedFrames.size();
-	if (decoded <= 0)
-		return;
+	D2LOG(D2LogCat::Token, "  Total: %d components found, %d max frames", foundCount, maxFrames);
 
-	m_animFrameCount = decoded;
+	if (maxFrames <= 0)
+	{
+		D2LOG_ERROR(D2LogCat::Token, "  No frames decoded from any component!");
+		return;
+	}
+
+	// Composite all layers into single frames.
+	// Find the bounding box across all layers for each frame.
+	m_animFrameCount = maxFrames;
 	m_animFramesOwned = true;
-	m_animFrames = (ALLEGRO_BITMAP **)calloc(decoded, sizeof(ALLEGRO_BITMAP *));
-	m_frameOffsetX = (int *)calloc(decoded, sizeof(int));
-	m_frameOffsetY = (int *)calloc(decoded, sizeof(int));
+	m_animFrames = (ALLEGRO_BITMAP **)calloc(maxFrames, sizeof(ALLEGRO_BITMAP *));
+	m_frameOffsetX = (int *)calloc(maxFrames, sizeof(int));
+	m_frameOffsetY = (int *)calloc(maxFrames, sizeof(int));
 
 	if (!m_animFrames || !m_frameOffsetX || !m_frameOffsetY)
 		return;
 
-	for (int i = 0; i < decoded; i++)
+	for (int f = 0; f < maxFrames; f++)
 	{
-		m_animFrames[i] = decodedFrames[i];
+		// Find bounding box of all layers for this frame
+		int minX = 9999, minY = 9999, maxX = -9999, maxY = -9999;
+		bool anyLayer = false;
 
-		uint32_t fw = 0, fh = 0;
-		int32_t offX = 0, offY = 0;
-		graphic->GetGraphicsData(nullptr, i, &fw, &fh, &offX, &offY);
-		m_frameOffsetX[i] = offX;
-		m_frameOffsetY[i] = offY;
-
-		if (i == 0 && m_w <= 0 && m_animFrames[i])
+		for (int c = 0; c < NUM_COMPONENTS; c++)
 		{
-			m_w = al_get_bitmap_width(m_animFrames[i]);
-			m_h = al_get_bitmap_height(m_animFrames[i]);
+			if (!layers[c].graphic || f >= (int)layers[c].frames.size() || !layers[c].frames[f])
+				continue;
+
+			int32_t offX = 0, offY = 0;
+			uint32_t fw = 0, fh = 0;
+			layers[c].graphic->GetGraphicsData(nullptr, f, &fw, &fh, &offX, &offY);
+
+			int lx = offX;
+			int ly = offY;
+			int lw = al_get_bitmap_width(layers[c].frames[f]);
+			int lh = al_get_bitmap_height(layers[c].frames[f]);
+
+			if (f == 0)
+				D2LOG_DEBUG(D2LogCat::Token, "    comp %d: off=(%d,%d) bmp=%dx%d gfx=(%d,%d)",
+					componentOrder[c], offX, offY, lw, lh, (int)fw, (int)fh);
+
+			if (lx < minX) minX = lx;
+			if (ly < minY) minY = ly;
+			if (lx + lw > maxX) maxX = lx + lw;
+			if (ly + lh > maxY) maxY = ly + lh;
+			anyLayer = true;
+		}
+
+		if (!anyLayer)
+			continue;
+
+		int compW = maxX - minX;
+		int compH = maxY - minY;
+		if (compW <= 0 || compH <= 0)
+			continue;
+
+		m_frameOffsetX[f] = minX;
+		m_frameOffsetY[f] = minY;
+
+		if (f == 0)
+			D2LOG(D2LogCat::Token, "  Frame 0 composite: %dx%d offset=(%d,%d)", compW, compH, minX, minY);
+
+		ALLEGRO_BITMAP *composite = al_create_bitmap(compW, compH);
+		if (!composite)
+		{
+			D2LOG_ERROR(D2LogCat::Token, "  al_create_bitmap(%d,%d) FAILED for frame %d", compW, compH, f);
+			continue;
+		}
+
+		ALLEGRO_BITMAP *prevTarget = al_get_target_bitmap();
+		al_set_target_bitmap(composite);
+		al_clear_to_color(al_map_rgba(0, 0, 0, 0));
+
+		// Draw layers back-to-front
+		for (int c = 0; c < NUM_COMPONENTS; c++)
+		{
+			if (!layers[c].graphic || f >= (int)layers[c].frames.size() || !layers[c].frames[f])
+				continue;
+
+			int32_t offX = 0, offY = 0;
+			uint32_t fw = 0, fh = 0;
+			layers[c].graphic->GetGraphicsData(nullptr, f, &fw, &fh, &offX, &offY);
+
+			al_draw_bitmap(layers[c].frames[f],
+				(float)(offX - minX), (float)(offY - minY), 0);
+		}
+
+		al_set_target_bitmap(prevTarget);
+		m_animFrames[f] = composite;
+
+		if (f == 0 && m_w <= 0)
+		{
+			m_w = compW;
+			m_h = compH;
+		}
+	}
+
+	// Free individual layer bitmaps (composited into m_animFrames)
+	for (int c = 0; c < NUM_COMPONENTS; c++)
+	{
+		for (auto *bmp : layers[c].frames)
+		{
+			if (bmp)
+				al_destroy_bitmap(bmp);
 		}
 	}
 
